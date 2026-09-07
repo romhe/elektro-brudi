@@ -30,10 +30,10 @@ Repository artifacts:
 
 - Principal frame names use `Route · State · Dataset`, for example `Overview · Completed · Mixed verification`.
 - Components use `Family / Variant`, for example `Status Badge / Verified available`.
-- Layers use semantic names such as `Winner heading`, `Monthly delta`, and `Verification explanation`, never `Rectangle 43`.
+- Layers use semantic names such as `Offer comparison table`, `SelectedOfferInspector`, and `Verification explanation`, never `Rectangle 43`.
 - German is the product language. Internal Figma variant property values may use concise English identifiers.
 - Financial figures use German formatting, euro signs, and tabular numerals.
-- The representative winner is a verified Škoda Enyaq; supporting examples include CUPRA Born, VW ID.4, VW ID.3, and one mobile.de-only unverified candidate.
+- The default selection is the rank-1 verified offer; supporting examples include rank, source, verification, finance, equipment, score, and refresh-state variation, including mobile.de-only unverified candidates.
 
 ### Task 1: Resolve the Figma destination and inspect capabilities
 
@@ -198,15 +198,15 @@ Screenshot the component sets at readable scale. Verify that discovered and part
 
 ### Task 6: Build decision and offer components
 
-**Targets:** Import, winner, reference delta, score, offer table/card
+**Targets:** Import, selected-offer inspector, reference delta, score, offer table/card
 
 - [ ] **Step 1: Create URL import**
 
 Build `URL Import` variants for empty, classifying, valid, invalid, and unsupported. Include one HTTPS field, detected source, primary import action, and localized inline error.
 
-- [ ] **Step 2: Create winner cards**
+- [ ] **Step 2: Create the selected-offer inspector**
 
-Build `Winner Card` variants for best verified, lowest financing cost, highest equipment, lowest cash price, best unverified candidate, and no verified winner. Only the best-verified variant uses the dominant winner treatment.
+Build `SelectedOfferInspector` variants for selected verified, selected unverified, stale/partial, and no selection. Show the selected vehicle, rank, verification and finance state, purchase price, effective monthly cost, Golf delta, 70/30 score split, equipment summary, freshness, and `Details öffnen`. The inspector reflects the currently selected table row; it does not independently declare a winner.
 
 - [ ] **Step 3: Create reference delta**
 
@@ -218,11 +218,11 @@ Build `Score Breakdown` showing Finance 70%, Equipment 30%, and Verification as 
 
 - [ ] **Step 5: Create responsive offer representations**
 
-Build `Offer Row` for desktop and `Offer Card` for mobile. Include vehicle, cash price, mileage/registration, verification, refresh state, cheapest eligible scenario, effective monthly cost, Golf delta, equipment points, and total score.
+Build `Offer Row` for desktop and `Offer Card` for mobile. Include stable decision `order` rendered as `Rang`, vehicle/source, cash price, mileage/registration, verification, refresh state, cheapest eligible scenario, effective monthly cost, Golf delta, equipment points, and total score. Sorting another column must never rewrite `order`.
 
 - [ ] **Step 6: Validate decision hierarchy**
 
-Screenshot the component group. Confirm that the verified winner leads, the monthly delta is readable before secondary metrics, and unverified candidates are visually subordinate.
+Screenshot the component group. Confirm that rank is visible without dominating comparison data, selected state is distinct from winner semantics, monthly delta is readable before secondary metrics, and unverified candidates are visually subordinate.
 
 ### Task 7: Build evidence, equipment, and finance components
 
@@ -258,11 +258,11 @@ Create `Overview · Completed · Mixed verification` at 1440 × 1024. Add AppShe
 
 - [ ] **Step 2: Fill the desktop Overview above the fold**
 
-Populate URL import, completed-job summary, best verified Enyaq card, and Golf delta. Use realistic German copy and values derived from the approved profile, including the approximately EUR 427–428 monthly Golf baseline.
+Populate the page heading, `Angebot hinzufügen`, `Alle aktualisieren`, and a compact summary of total offers, verified offers, attention-required offers, and last refresh. Add controls for search, verification, source, finance eligibility, equipment gaps, and reset.
 
 - [ ] **Step 3: Fill the desktop Overview offer area**
 
-Add four supporting winner cards, filters, and five offer rows. Include one discovered-only mobile.de candidate and one partial/stale entry so status hierarchy is visible.
+Show all existing offers in one dense, sortable table with columns `Rang`, `Fahrzeug`, `Verifikation`, `Kaufpreis`, `Kilometer`, `Effektiv/Monat`, `Golf-Differenz`, `Finanzierung`, `Ausstattung`, `Score`, `Aktualisiert`, and row action. Make rank, price, mileage, monthly cost, Golf delta, score, and updated sortable. `Rang` is backed by stable `order` and does not change when another column is sorted. Select rank 1 by default with a restrained blue row treatment and show its `SelectedOfferInspector` to the right without leaving the page. Include verified, unverified, partial, finance-warning, and finance-ineligible examples.
 
 - [ ] **Step 4: Create the mobile Overview skeleton**
 
@@ -270,11 +270,11 @@ Create `Overview · Completed · Mixed verification · Mobile` at 390 × 844 wit
 
 - [ ] **Step 5: Fill mobile Overview**
 
-Place URL import above the fold, followed by compact progress, verified winner, stacked Golf comparison, collapsed supporting winners, and offer cards. Do not use a horizontally scrollable table.
+Place compact URL import, search, sort, and filter controls above ranked offer cards. Each card shows stable rank, verification, vehicle/source, price, mileage, effective monthly cost, Golf delta, equipment points, finance state, and score. The selected card exposes `Auswahl ansehen` and opens the selected-offer details as a disclosure or bottom sheet. Do not use a horizontally scrollable table.
 
 - [ ] **Step 6: Validate both Overview frames**
 
-Capture both frames. Verify exact dimensions, no clipped content, visible primary actions, legible desktop density, mobile touch targets of at least 44 px, no horizontal overflow, and a clear answer-first scan path.
+Capture both frames. Verify exact dimensions, all seven desktop offers are visible, filters and sort affordances are legible, rank remains stable while sort state changes, selecting a row updates the inspector without navigation, mobile cards preserve rank and selection access, touch targets are at least 44 px, and there is no horizontal overflow.
 
 ### Task 9: Compose representative Detail and Settings sections
 
@@ -334,7 +334,7 @@ Wire empty Overview → valid URL → CRAWLING → WAITING_FOR_LOCAL_LLM → COM
 
 - [ ] **Step 3: Connect representative product areas**
 
-Wire winner/offer selection to the Offer Detail reference and the assumptions link to the Settings reference. These targets demonstrate navigation and interaction patterns; their complete flows are deferred to HTML mockups.
+Wire row/card selection to update or reveal `SelectedOfferInspector` without navigation. Wire `Details öffnen` from the inspector to the Offer Detail reference and the assumptions link to the Settings reference. These targets demonstrate navigation and interaction patterns; their complete flows are deferred to HTML mockups.
 
 - [ ] **Step 4: Connect return paths**
 
@@ -358,7 +358,7 @@ Document desktop tab order, mobile focus order, visible focus ring, status text 
 
 - [ ] **Step 2: Add responsive annotations**
 
-Document the 232 px desktop sidebar, 360 px evidence inspector, mobile table-to-card conversion, disclosure behavior, sticky summaries, and the prohibition on horizontal page scrolling at 390 px.
+Document the 232 px desktop sidebar, selected-offer inspector, mobile table-to-card conversion, stable `order`/rank semantics, disclosure behavior, sticky summaries, and the prohibition on horizontal page scrolling at 390 px.
 
 - [ ] **Step 3: Add data and status guardrails**
 

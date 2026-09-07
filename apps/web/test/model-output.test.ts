@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseModelOutput, proofMessages } from "../src/lib/model-output.js";
+import {
+  minimalExtractionSchema,
+  parseModelOutput,
+  proofMessages,
+} from "../src/lib/model-output.js";
 
 describe("parseModelOutput", () => {
   it("accepts the minimal JSON object", () => {
@@ -37,5 +41,12 @@ describe("parseModelOutput", () => {
     expect(proofMessages[0]?.content).toContain('"model"');
     expect(proofMessages[0]?.content).toContain('"price_eur"');
     expect(proofMessages[0]?.content).not.toMatch(/rate|kredit|leasing/iu);
+  });
+
+  it("ships a strict schema string for the grammar compiler", () => {
+    const schema = JSON.parse(minimalExtractionSchema);
+    expect(schema.required).toEqual(["model", "price_eur"]);
+    expect(schema.additionalProperties).toBe(false);
+    expect(Object.keys(schema.properties)).toEqual(["model", "price_eur"]);
   });
 });

@@ -5,7 +5,11 @@ import {
 } from "@mlc-ai/web-llm";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { InitProgressReport, MLCEngineInterface } from "@mlc-ai/web-llm";
-import { parseModelOutput, proofMessages } from "./model-output.ts";
+import {
+  minimalExtractionSchema,
+  parseModelOutput,
+  proofMessages,
+} from "./model-output.ts";
 import type { MinimalExtraction } from "./model-output.ts";
 
 export const modelIds = [
@@ -86,17 +90,43 @@ export interface GenerationResult {
   readonly durationMs: number;
 }
 
+export const GENERATION_TIMEOUT_MS = 180_000;
+
 export async function generateProofJson(
   loaded: LoadedModel,
+  timeoutMs = GENERATION_TIMEOUT_MS,
 ): Promise<GenerationResult> {
   const startedAt = performance.now();
-  const reply = await loaded.engine.chat.completions.create({
-    messages: proofMessages,
-    temperature: 0,
-    max_tokens: 160,
-    response_format: { type: "json_object" },
-    extra_body: { enable_thinking: false },
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            `Generation timed out after ${Math.round(timeoutMs / 1000)} s`,
+          ),
+        ),
+      timeoutMs,
+    );
   });
+  let reply;
+  try {
+    reply = await Promise.race([
+      loaded.engine.chat.completions.create({
+        messages: proofMessages,
+        temperature: 0,
+        max_tokens: 160,
+        response_format: {
+          type: "json_object",
+          schema: minimalExtractionSchema,
+        },
+        extra_body: { enable_thinking: false },
+      }),
+      timeout,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
   const raw = reply.choices[0]?.message.content ?? "";
   return {
     raw,

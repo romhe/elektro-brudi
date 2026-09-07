@@ -1,6 +1,19 @@
 export const PROOF_SOURCE_TEXT =
   "VW ID.4 Pro Performance, Kaufpreis 23.880 EUR, Automatische Distanzregelung ACC, Apple CarPlay";
 
+// Strict schema for the minimal proof object. web-llm's json_object mode
+// requires an explicit schema string; without one the grammar compiler fails
+// inside the worker and the request never resolves.
+export const minimalExtractionSchema = JSON.stringify({
+  type: "object",
+  properties: {
+    model: { type: "string", minLength: 1 },
+    price_eur: { type: "integer", minimum: 1 },
+  },
+  required: ["model", "price_eur"],
+  additionalProperties: false,
+});
+
 export interface MinimalExtraction {
   readonly model: string;
   readonly price_eur: number;

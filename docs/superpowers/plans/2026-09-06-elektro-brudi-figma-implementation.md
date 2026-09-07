@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build and verify one editable Figma design file containing the foundations, reusable components, six responsive ElektroBrudi MVP frames, required state examples, and a clickable critical-path prototype.
+**Goal:** Build and verify one three-page editable Figma design file containing the visual guidelines, reusable components and states, polished desktop/mobile Overview screens, representative Detail and Settings sections, and a clickable Overview/Import prototype.
 
 **Architecture:** Create the design system before composing screens. Use Figma variables, text/effect styles, Auto Layout, component properties, and variants so desktop and mobile views share semantics without duplicating loose groups. Build and validate the file incrementally with `use_figma`, returning node IDs from every mutation and capturing screenshots after each principal frame.
 
@@ -14,11 +14,9 @@
 
 The Figma file is named `ElektroBrudi — MVP UI` and contains exactly these pages:
 
-- `01 · Foundations`: variable swatches, type specimen, spacing/radius/elevation reference, accessibility notes
-- `02 · Components`: reusable component sets and documented state variants
-- `03 · Desktop`: the three 1440 × 1024 principal frames
-- `04 · Mobile`: the three 390 × 844 principal frames
-- `05 · Prototype`: critical-path and alternative-state frames connected for review
+- `01 · Foundations & Guidelines`: variable swatches, type specimen, spacing/radius/elevation reference, accessibility, responsive, content, and status rules
+- `02 · Components & States`: reusable component sets and documented state variants
+- `03 · Key Screens`: polished desktop/mobile Overview, import-state prototype, and representative Offer Detail and Settings sections
 
 Repository artifacts:
 
@@ -59,11 +57,11 @@ Call `figma_get_libraries` for the new file. Record available libraries for evid
 
 ### Task 2: Create pages and primitive variable collections
 
-**Targets:** Five named pages; primitive color, number, and string variables
+**Targets:** Three named pages; primitive color and dimension variables
 
 - [ ] **Step 1: Rename the blank page and add the remaining pages**
 
-In one `use_figma` mutation, rename the existing page `01 · Foundations` and create `02 · Components`, `03 · Desktop`, `04 · Mobile`, and `05 · Prototype`. Return every page ID.
+In one `use_figma` mutation, rename the existing page `01 · Foundations & Guidelines` and create `02 · Components & States` and `03 · Key Screens`. Return every page ID.
 
 - [ ] **Step 2: Create primitive colors**
 
@@ -142,7 +140,7 @@ Create `Elevation / Card` with a restrained drop shadow and `Elevation / Floatin
 
 - [ ] **Step 4: Build the Foundations reference frame**
 
-On `01 · Foundations`, create an Auto Layout frame named `Foundations · Light` containing color roles, type specimen, spacing scale, radii, elevation, and the note `Light mode only · system dark mode is outside MVP scope`.
+On `01 · Foundations & Guidelines`, create an Auto Layout frame named `Foundations · Light` containing color roles, type specimen, spacing scale, radii, elevation, accessibility, responsive, content-language, and status-semantic guidance, plus the note `Light mode only · system dark mode is outside MVP scope`.
 
 - [ ] **Step 5: Validate Foundations visually**
 
@@ -248,13 +246,13 @@ Build Cash, Dealer finance, Custom credit, and Provider template variants, with 
 
 Screenshot finance cards. Confirm that total outlay has stronger emphasis than monthly rate and that down payment and balloon are visible without expanding the card.
 
-### Task 8: Compose the three desktop frames
+### Task 8: Compose polished Overview screens
 
-**Targets:** `03 · Desktop`, three 1440 × 1024 frames
+**Targets:** `03 · Key Screens`, one 1440 × 1024 frame and one 390 × 844 frame
 
-- [ ] **Step 1: Create desktop skeletons**
+- [ ] **Step 1: Create the desktop Overview skeleton**
 
-Create `Overview · Completed · Mixed verification`, `Offer detail · Verified · Evidence conflict`, and `Settings · Reference profile · Saved`, each 1440 × 1024. Add AppShell, sidebar, toolbar, and placeholder Auto Layout regions. Return all frame and region IDs.
+Create `Overview · Completed · Mixed verification` at 1440 × 1024. Add AppShell, 232 px sidebar, toolbar, and placeholder Auto Layout regions. Return the frame and region IDs.
 
 - [ ] **Step 2: Fill the desktop Overview above the fold**
 
@@ -264,49 +262,45 @@ Populate URL import, completed-job summary, best verified Enyaq card, and Golf d
 
 Add four supporting winner cards, filters, and five offer rows. Include one discovered-only mobile.de candidate and one partial/stale entry so status hierarchy is visible.
 
-- [ ] **Step 4: Fill the desktop Offer detail header and facts**
+- [ ] **Step 4: Create the mobile Overview skeleton**
 
-Add Enyaq title, price, score, verified status, timestamps, source, vehicle facts, and equipment. Show one conflict such as battery capacity or ACC evidence to activate the inspector.
+Create `Overview · Completed · Mixed verification · Mobile` at 390 × 844 with mobile navigation and stacked placeholder regions.
 
-- [ ] **Step 5: Fill the desktop Offer detail finance and evidence**
-
-Add Cash, Dealer finance, and Custom credit cards; Reference Delta; expanded Score Breakdown; and the evidence inspector with correction controls.
-
-- [ ] **Step 6: Fill the desktop Settings frame**
-
-Open `Referenz & Betriebskosten`. Include Golf, Mercedes, EV distance, electricity, PV, insurance, and maintenance fields; a live baseline panel; saved state; and recalculation notice.
-
-- [ ] **Step 7: Validate desktop frames**
-
-Capture each frame. Verify 1440 × 1024 dimensions, no clipped content, consistent 232 px sidebar, visible primary actions, legible table density, and a clear answer-first scan path.
-
-### Task 9: Compose the three mobile frames
-
-**Targets:** `04 · Mobile`, three 390 × 844 frames
-
-- [ ] **Step 1: Create mobile skeletons**
-
-Create `Overview · Completed · Mixed verification`, `Offer detail · Verified · Evidence conflict`, and `Settings · Reference profile · Saved`, each 390 × 844. Add mobile navigation, compact toolbar, and stacked Auto Layout regions.
-
-- [ ] **Step 2: Fill mobile Overview**
+- [ ] **Step 5: Fill mobile Overview**
 
 Place URL import above the fold, followed by compact progress, verified winner, stacked Golf comparison, collapsed supporting winners, and offer cards. Do not use a horizontally scrollable table.
 
-- [ ] **Step 3: Fill mobile Offer detail**
+- [ ] **Step 6: Validate both Overview frames**
 
-Add sticky compact summary; disclosures for vehicle, equipment, finance, and score; a visible evidence action; and thumb-accessible refresh and financing actions. Represent the evidence inspector as a bottom-sheet overlay example.
+Capture both frames. Verify exact dimensions, no clipped content, visible primary actions, legible desktop density, mobile touch targets of at least 44 px, no horizontal overflow, and a clear answer-first scan path.
 
-- [ ] **Step 4: Fill mobile Settings**
+### Task 9: Compose representative Detail and Settings sections
 
-Add section picker, grouped native-style form rows, sticky baseline summary, inline saved feedback, and a 44 px minimum save action.
+**Targets:** `03 · Key Screens`, four implementation-reference sections
 
-- [ ] **Step 5: Validate mobile frames**
+- [ ] **Step 1: Build the desktop Offer Detail reference**
 
-Capture each frame at original resolution. Verify exactly 390 × 844, no horizontal overflow, no clipped German labels, touch targets at least 44 px, and primary actions visible without ambiguous icon-only controls.
+Create `Offer detail · Pattern · Desktop` showing the verified Enyaq summary, one conflicting vehicle field, equipment states, evidence inspector, finance scenarios, Reference Delta, and Score Breakdown.
+
+- [ ] **Step 2: Build the mobile Offer Detail reference**
+
+Create `Offer detail · Pattern · Mobile` showing the sticky summary, disclosure pattern, evidence bottom sheet, and thumb-accessible refresh and financing actions.
+
+- [ ] **Step 3: Build the desktop Settings reference**
+
+Create `Settings · Pattern · Desktop` with section navigation, native-style grouped fields, live Golf baseline, saved feedback, and recalculation notice.
+
+- [ ] **Step 4: Build the mobile Settings reference**
+
+Create `Settings · Pattern · Mobile` with section picker, grouped rows, sticky baseline, inline validation, and a 44 px minimum save action.
+
+- [ ] **Step 5: Validate implementation references**
+
+Capture all four reference sections. Verify that each defines enough spacing, component, content, interaction, and responsive behavior to create the complete HTML mockups without a new visual-language decision.
 
 ### Task 10: Build required state examples
 
-**Targets:** Components and Prototype pages
+**Targets:** `02 · Components & States` and `03 · Key Screens`
 
 - [ ] **Step 1: Add overview state strip**
 
@@ -326,7 +320,7 @@ Compare the examples against the Required states section of `docs/plans/2026-09-
 
 ### Task 11: Wire the clickable prototype
 
-**Targets:** `05 · Prototype`, prototype interactions and annotations
+**Targets:** `03 · Key Screens`, Overview/Import prototype interactions and annotations
 
 - [ ] **Step 1: Duplicate only the frames needed for interaction**
 
@@ -336,13 +330,13 @@ Use component variants and overlays for state transitions. Keep one primary-flow
 
 Wire empty Overview → valid URL → CRAWLING → WAITING_FOR_LOCAL_LLM → COMPLETED Overview. Provide alternative links to invalid URL, PARTIAL, FAILED, and first-download examples.
 
-- [ ] **Step 3: Connect the evidence and correction flow**
+- [ ] **Step 3: Connect representative product areas**
 
-Wire winner/offer selection → Offer detail → Evidence Drawer/Sheet overlay → correction state → updated detail.
+Wire winner/offer selection to the Offer Detail reference and the assumptions link to the Settings reference. These targets demonstrate navigation and interaction patterns; their complete flows are deferred to HTML mockups.
 
-- [ ] **Step 4: Connect finance and settings**
+- [ ] **Step 4: Connect return paths**
 
-Wire add-financing → finance form/card → updated comparison → Settings → edited reference profile → recalculation notice → Overview.
+Wire Detail and Settings reference actions back to the completed Overview. Keep finance and settings state demonstrations within their component/reference sections.
 
 - [ ] **Step 5: Define interaction behavior**
 
@@ -350,7 +344,7 @@ Use restrained dissolve or smart-animate transitions no longer than 180 ms. Docu
 
 - [ ] **Step 6: Test the critical path**
 
-Starting from the prototype entry frame, click the full critical path without selecting layers manually. Expected: every forward action and close/back action resolves, overlays do not trap the user, and the final Settings-to-Overview action returns to an updated comparison.
+Starting from the prototype entry frame, click the full import path without selecting layers manually. Expected: every forward action and close/back action resolves, alternative import states are reachable, and Detail/Settings reference links return to Overview.
 
 ### Task 12: Document accessibility and implementation handoff
 
@@ -370,7 +364,7 @@ Annotate that only verified, fully refreshed, finance-eligible offers can win; m
 
 - [ ] **Step 4: Verify implementation readiness**
 
-Inspect every principal frame name and component property. Expected: issues #19, #20, and #37 can derive copy, spacing, components, states, and responsive behavior without a new product decision.
+Inspect every key frame, reference-section name, and component property. Expected: issue #20 can implement Overview directly and issues #19/#37 can derive complete responsive HTML mockups without a new visual-language decision.
 
 ### Task 13: Final structural and visual verification
 
@@ -380,11 +374,11 @@ Inspect every principal frame name and component property. Expected: issues #19,
 
 Use `figma_get_metadata` or a read-only `use_figma` traversal to return page names, principal frame names and dimensions, component-set names, variable collection names, detached-instance count, and unnamed-layer count.
 
-Expected: five pages; six principal frames at exact sizes; required component families present; no accidental detached instances; no generic names in principal frames.
+Expected: three pages; two polished Overview frames at exact sizes; four representative Detail/Settings sections; required component families present; no accidental detached instances; no generic names in key frames.
 
 - [ ] **Step 2: Run an overflow and typography audit**
 
-Traverse principal frames for nodes extending beyond frame bounds, text nodes with zero or implausibly narrow width, clipped text, missing font loads, and non-Auto-Layout structural groups. Fix every result and rerun the audit.
+Traverse the polished Overview frames and representative sections for nodes extending beyond frame bounds, text nodes with zero or implausibly narrow width, clipped text, missing font loads, and non-Auto-Layout structural groups. Fix every result and rerun the audit.
 
 - [ ] **Step 3: Run a semantic audit**
 
@@ -392,15 +386,15 @@ Verify status is never color-only, discovered and partial are explicit, Finance 
 
 - [ ] **Step 4: Capture final screenshots**
 
-Capture all six principal frames at readable resolution. Inspect them individually and as a set for hierarchy, consistency, desktop/mobile parity, and macOS-native restraint.
+Capture the two polished Overview frames and four representative sections at readable resolution. Inspect them individually and as a set for hierarchy, consistency, desktop/mobile parity, and macOS-native restraint.
 
 - [ ] **Step 5: Export immutable PNG previews**
 
-Use `figma_download_assets` for each principal frame as PNG. Preserve the six returned files for attachment to issue #18 without editing or recompression.
+Use `figma_download_assets` for both Overview frames and the four representative sections as PNG. Preserve the six returned files for attachment to issue #18 without editing or recompression.
 
 - [ ] **Step 6: Publish the handoff to GitHub issue #18**
 
-Add one issue comment containing the Figma URL, a concise inventory of the six frames and prototype, and all six PNG previews embedded as GitHub-hosted attachments. Reopen the links after posting to verify the Figma file and every image resolve.
+Add one issue comment containing the Figma URL, a concise inventory of the three pages, Overview prototype, and representative sections, and all six PNG previews embedded as GitHub-hosted attachments. Reopen the links after posting to verify the Figma file and every image resolve.
 
 - [ ] **Step 7: Close and verify GitHub issue #18**
 

@@ -6,7 +6,7 @@
 
 ## Objective
 
-Design an editable Figma file for ElektroBrudi's three MVP surfaces on desktop and mobile. The experience should combine a trustworthy, data-rich decision cockpit with the restraint and familiarity of a native macOS utility.
+Design a three-page editable Figma file that establishes ElektroBrudi's visual guidelines, component language, and polished Overview/Import experience. The system must provide enough representative Offer Detail and Settings patterns to make subsequent responsive HTML mockups deterministic. The experience should combine a trustworthy, data-rich decision cockpit with the restraint and familiarity of a native macOS utility.
 
 The design must help the user answer one question quickly: which currently verified electric-car offer is the best practical and financial choice compared with keeping the Golf?
 
@@ -138,7 +138,7 @@ Equipment exposes five distinct states: PRESENT, ABSENT, UNKNOWN, PREPARED_ONLY,
 
 Finance cards expose down payment, monthly rate, term, balloon, interest, fees, total outlay, credit cost, and eligibility reasons. Monthly rate is never emphasized without down payment and balloon context.
 
-## Principal frames
+## Key frames and representative sections
 
 ### Overview / Desktop — 1440 x 1024
 
@@ -158,7 +158,7 @@ Finance cards expose down payment, monthly rate, term, balloon, interest, fees, 
 - Collapsible supporting winners
 - Offer cards containing status, effective monthly cost, delta, and score
 
-### Offer detail / Desktop — 1440 x 1024
+### Offer detail / Representative desktop section
 
 - Verified Skoda Enyaq example
 - Summary header with price, score, status, and refresh
@@ -168,7 +168,7 @@ Finance cards expose down payment, monthly rate, term, balloon, interest, fees, 
 - Monthly-cost and Golf-delta summary
 - One conflicting field that demonstrates correction
 
-### Offer detail / Mobile — 390 x 844
+### Offer detail / Representative mobile section
 
 - Sticky compact offer summary
 - Disclosures for vehicle, equipment, finance, and score
@@ -176,7 +176,7 @@ Finance cards expose down payment, monthly rate, term, balloon, interest, fees, 
 - Thumb-accessible primary actions
 - No compressed desktop tables
 
-### Settings / Desktop — 1440 x 1024
+### Settings / Representative desktop section
 
 - Section navigation
 - Reference and operating-cost section open by default
@@ -184,7 +184,7 @@ Finance cards expose down payment, monthly rate, term, balloon, interest, fees, 
 - Sticky live baseline preview around EUR 427–428 per month
 - Recalculation notice and section-scoped save action
 
-### Settings / Mobile — 390 x 844
+### Settings / Representative mobile section
 
 - Section picker rather than a second sidebar
 - Grouped native-style form rows
@@ -223,27 +223,26 @@ The primary clickable journey is:
 
 Alternative branches cover invalid or unsupported URLs, partial crawls, failed refreshes, no verified winner, initial model download, missing Keychain credentials, and invalid financing mathematics.
 
-State branches should be modeled through component variants and focused examples rather than duplicating all six principal frames.
+State branches should be modeled through component variants and focused examples rather than duplicating full application pages. The Figma prototype concentrates on Overview/Import and links to representative Detail and Settings sections; complete responsive Detail and Settings flows belong to later HTML mockups.
 
 ## Figma file structure
 
-The editable design file contains these pages:
+The Starter-plan-compatible design file contains exactly these pages:
 
-1. Foundations
-2. Components
-3. Desktop
-4. Mobile
-5. Prototype
+1. `01 · Foundations & Guidelines`
+2. `02 · Components & States`
+3. `03 · Key Screens`
 
-Every principal frame is named with route, state, and data assumption. Components use variables and variants. The prototype links the critical path across the three application areas.
+The Key Screens page contains the polished 1440 x 1024 and 390 x 844 Overview/Import frames, the critical import-state sequence, and representative Offer Detail and Settings sections for desktop and mobile. Every frame is named with route, state, and data assumption. Components use variables and variants.
 
 ## Acceptance criteria
 
-- All six principal frames exist at their exact target sizes.
-- Desktop and mobile implement the same product hierarchy without horizontal scrolling at 390 px.
+- The polished Overview/Import frames exist at exactly 1440 x 1024 and 390 x 844.
+- Desktop and mobile Overview implement the same product hierarchy without horizontal scrolling at 390 px.
+- Representative Offer Detail and Settings sections define layout, evidence, finance, form, responsive, and interaction patterns for later HTML mockups.
 - Verification, freshness, and extraction confidence remain visually distinct.
 - A verified winner cannot be confused with an unverified or partial candidate.
 - Finance never promotes a monthly rate without its material conditions.
 - Evidence and user corrections remain discoverable and reversible.
 - Keyboard order, focus treatments, labels, helper text, error text, and reduced-motion behavior are documented.
-- The file is editable and implementation-ready for issues #19, #20, and #37.
+- The file is editable and defines a coherent design guideline and language for issues #19, #20, and #37 and their HTML mockups.

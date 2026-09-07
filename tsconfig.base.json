@@ -7,6 +7,8 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": false,
     "noEmit": true

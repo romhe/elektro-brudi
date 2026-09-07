@@ -8,7 +8,7 @@ export {
   extractionFieldIdSchema,
   extractionFieldSchema,
   extractionFieldValueSchema,
-} from "./extraction.js";
+} from "./extraction.ts";
 export type {
   DiagnosticSeverity,
   EquipmentClaim,
@@ -18,17 +18,17 @@ export type {
   ExtractionField,
   ExtractionFieldId,
   ExtractionFieldValue,
-} from "./extraction.js";
+} from "./extraction.ts";
 
 export {
   expectedFetchOutcomeSchema,
   fixtureSplitSchema,
   pageKindSchema,
   sourceFixtureSchema,
-} from "./source.js";
+} from "./source.ts";
 export type {
   ExpectedFetchOutcome,
   FixtureSplit,
   PageKind,
   SourceFixture,
-} from "./source.js";
+} from "./source.ts";

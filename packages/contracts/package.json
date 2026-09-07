@@ -5,6 +5,7 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
+    "test:package-import": "node --input-type=module --eval 'await import(\"@elektro-brudi/contracts\")'",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },

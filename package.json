@@ -11,7 +11,7 @@
   "scripts": {
     "lint": "eslint . && prettier --check .",
     "typecheck": "pnpm --filter @elektro-brudi/contracts typecheck",
-    "test": "vitest run"
+    "test": "pnpm --filter @elektro-brudi/contracts test:package-import && vitest run"
   },
   "devDependencies": {
     "@babel/core": "8.0.1",

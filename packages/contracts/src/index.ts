@@ -5,6 +5,7 @@ export {
   equipmentStateSchema,
   extractionDiagnosticSchema,
   extractionEnvelopeSchema,
+  extractionFieldIdSchema,
   extractionFieldSchema,
   extractionFieldValueSchema,
 } from "./extraction.js";
@@ -15,6 +16,7 @@ export type {
   ExtractionDiagnostic,
   ExtractionEnvelope,
   ExtractionField,
+  ExtractionFieldId,
   ExtractionFieldValue,
 } from "./extraction.js";
 

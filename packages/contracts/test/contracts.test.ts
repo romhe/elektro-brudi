@@ -27,6 +27,7 @@ const forbiddenVehicleFieldKeys = [
   "financingOffer",
   "leaseRate",
   "APR_rate",
+  "model",
 ] as const;
 
 const validSource = {
@@ -281,18 +282,36 @@ describe("extractionEnvelopeSchema", () => {
     ).toThrow();
   });
 
-  it("preserves permitted field and equipment keys", () => {
-    const extractionWithOriginalKeys = {
+  it("restricts Phase 0 vehicle field IDs in the TypeScript type", () => {
+    type FieldId = keyof ExtractionEnvelope["fields"];
+    expectTypeOf<FieldId>().toEqualTypeOf<"price">();
+
+    const withMonthlyPayment: ExtractionEnvelope = {
       ...validExtraction,
-      fields: { " releaseDate ": validExtraction.fields.price },
-      equipment: {
-        " heat_pump ": validExtraction.equipment.heat_pump,
+      fields: {
+        // @ts-expect-error finance fields are outside the extraction boundary
+        monthlyPayment: validExtraction.fields.price,
       },
     };
+    void withMonthlyPayment;
 
-    expect(extractionEnvelopeSchema.parse(extractionWithOriginalKeys)).toEqual(
-      extractionWithOriginalKeys,
-    );
+    const withCreditAmount: ExtractionEnvelope = {
+      ...validExtraction,
+      fields: {
+        // @ts-expect-error credit fields are outside the extraction boundary
+        creditAmount: validExtraction.fields.price,
+      },
+    };
+    void withCreditAmount;
+
+    const withUnknownField: ExtractionEnvelope = {
+      ...validExtraction,
+      fields: {
+        // @ts-expect-error #32 will define additional canonical field IDs
+        model: validExtraction.fields.price,
+      },
+    };
+    void withUnknownField;
   });
 
   it("excludes forbidden top-level properties from the TypeScript type", () => {

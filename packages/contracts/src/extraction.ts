@@ -6,50 +6,8 @@ const nonEmptyStringSchema = z
   .string()
   .refine((value) => value.trim().length > 0);
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/);
-const forbiddenFieldConcepts = [
-  "finance",
-  "financing",
-  "financial",
-  "leasing",
-  "lease",
-  "credit",
-  "loan",
-  "interest",
-  "availability",
-  "available",
-  "sold",
-  "verification",
-  "verified",
-  "verify",
-] as const;
-const forbiddenFieldNameSchema = nonEmptyStringSchema.refine((fieldName) => {
-  const fieldNameWords = fieldName
-    .trim()
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((word) => word.length > 0);
-  const normalizedFieldName = fieldNameWords.join("");
-  const containsAprConcept =
-    fieldNameWords.some(
-      (word) =>
-        word === "apr" || word.endsWith("apr") || word.startsWith("aprrate"),
-    ) || normalizedFieldName.includes("annualpercentagerate");
-  const containsPaymentConcept = [
-    "monthlypayment",
-    "downpayment",
-    "balloonpayment",
-  ].some((concept) => normalizedFieldName.includes(concept));
 
-  return (
-    !containsAprConcept &&
-    !containsPaymentConcept &&
-    !fieldNameWords.some((word) =>
-      forbiddenFieldConcepts.some((concept) => word.startsWith(concept)),
-    )
-  );
-});
+export const extractionFieldIdSchema = z.enum(["price"]);
 
 export const extractionFieldValueSchema = z.union([
   z.string(),
@@ -136,12 +94,13 @@ export const extractionEnvelopeSchema = z.strictObject({
   extractorId: nonEmptyStringSchema,
   extractorVersion: nonEmptyStringSchema,
   snapshotSha256: sha256Schema,
-  fields: z.record(forbiddenFieldNameSchema, extractionFieldSchema),
+  fields: z.partialRecord(extractionFieldIdSchema, extractionFieldSchema),
   equipment: z.record(nonEmptyStringSchema, equipmentClaimSchema),
   diagnostics: z.array(extractionDiagnosticSchema),
 });
 
 export type ExtractionFieldValue = z.infer<typeof extractionFieldValueSchema>;
+export type ExtractionFieldId = z.infer<typeof extractionFieldIdSchema>;
 export type ExtractionField = z.infer<typeof extractionFieldSchema>;
 export type EquipmentState = z.infer<typeof equipmentStateSchema>;
 export type EquipmentClaim = z.infer<typeof equipmentClaimSchema>;

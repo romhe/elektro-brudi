@@ -9,8 +9,9 @@
     "pnpm": "12.3.4"
   },
   "scripts": {
+    "feasibility:run": "pnpm --filter @elektro-brudi/feasibility start",
     "lint": "eslint . && prettier --check .",
-    "typecheck": "pnpm --filter @elektro-brudi/contracts typecheck",
+    "typecheck": "pnpm -r typecheck",
     "test": "pnpm --filter @elektro-brudi/contracts test:package-import && vitest run"
   },
   "devDependencies": {

@@ -6,6 +6,9 @@ export default [
   js.configs.recommended,
   {
     files: ["**/*.ts"],
+    rules: {
+      "no-undef": "off",
+    },
     languageOptions: {
       parser: babelParser,
       parserOptions: {

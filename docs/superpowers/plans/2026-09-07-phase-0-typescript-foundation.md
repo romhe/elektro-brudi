@@ -13,6 +13,7 @@
 ### Task 1: Configure the minimal workspace
 
 **Files:**
+
 - Create: `package.json`
 - Create: `pnpm-workspace.yaml`
 - Create: `.node-version`
@@ -105,10 +106,10 @@ export default [
       parserOptions: {
         requireConfigFile: false,
         babelOptions: { presets: ["@babel/preset-typescript"] },
-        sourceType: "module"
-      }
-    }
-  }
+        sourceType: "module",
+      },
+    },
+  },
 ];
 ```
 
@@ -168,6 +169,7 @@ git commit -m "chore: add pinned TypeScript workspace (#25)"
 ### Task 2: Specify contract behavior with failing tests
 
 **Files:**
+
 - Create: `packages/contracts/test/contracts.test.ts`
 
 - [ ] **Step 1: Write runtime and compile-time boundary tests**
@@ -177,10 +179,7 @@ Create tests which import the future schemas from `../src/index.js` and assert:
 ```ts
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { ExtractionEnvelope } from "../src/index.js";
-import {
-  extractionEnvelopeSchema,
-  sourceFixtureSchema,
-} from "../src/index.js";
+import { extractionEnvelopeSchema, sourceFixtureSchema } from "../src/index.js";
 
 const validSource = {
   fixtureId: "dealer-detail-001",
@@ -223,29 +222,40 @@ describe("sourceFixtureSchema", () => {
   });
 
   it.each(["LISTING", "UNKNOWN"])("rejects page kind %s", (pageKind) => {
-    expect(() => sourceFixtureSchema.parse({ ...validSource, pageKind })).toThrow();
+    expect(() =>
+      sourceFixtureSchema.parse({ ...validSource, pageKind }),
+    ).toThrow();
   });
 
   it("rejects an unknown fetch outcome", () => {
     expect(() =>
-      sourceFixtureSchema.parse({ ...validSource, expectedFetchOutcome: "SOLD" }),
+      sourceFixtureSchema.parse({
+        ...validSource,
+        expectedFetchOutcome: "SOLD",
+      }),
     ).toThrow();
   });
 
   it("rejects a non-HTTPS canonical URL", () => {
     expect(() =>
-      sourceFixtureSchema.parse({ ...validSource, canonicalUrl: "http://dealer.example/001" }),
+      sourceFixtureSchema.parse({
+        ...validSource,
+        canonicalUrl: "http://dealer.example/001",
+      }),
     ).toThrow();
   });
 });
 
 describe("extractionEnvelopeSchema", () => {
   it("accepts an evidence-bearing extraction", () => {
-    expect(extractionEnvelopeSchema.parse(validExtraction)).toEqual(validExtraction);
+    expect(extractionEnvelopeSchema.parse(validExtraction)).toEqual(
+      validExtraction,
+    );
   });
 
   it("rejects a missing schema version", () => {
-    const { schemaVersion: _schemaVersion, ...withoutVersion } = validExtraction;
+    const { schemaVersion: _schemaVersion, ...withoutVersion } =
+      validExtraction;
     expect(() => extractionEnvelopeSchema.parse(withoutVersion)).toThrow();
   });
 
@@ -253,7 +263,9 @@ describe("extractionEnvelopeSchema", () => {
     expect(() =>
       extractionEnvelopeSchema.parse({
         ...validExtraction,
-        equipment: { heat_pump: { ...validExtraction.equipment.heat_pump, state: "MAYBE" } },
+        equipment: {
+          heat_pump: { ...validExtraction.equipment.heat_pump, state: "MAYBE" },
+        },
       }),
     ).toThrow();
   });
@@ -263,23 +275,33 @@ describe("extractionEnvelopeSchema", () => {
       extractionEnvelopeSchema.parse({
         ...validExtraction,
         fields: {
-          price: { value: 29990, evidenceText: null, sourceSection: null, confidence: 0.99 },
+          price: {
+            value: 29990,
+            evidenceText: null,
+            sourceSection: null,
+            confidence: 0.99,
+          },
         },
       }),
     ).toThrow();
   });
 
-  it.each(["availabilityStatus", "sold", "verificationStatus", "monthlyPayment"])(
-    "rejects forbidden extraction field %s",
-    (fieldName) => {
-      expect(() =>
-        extractionEnvelopeSchema.parse({
-          ...validExtraction,
-          fields: { ...validExtraction.fields, [fieldName]: validExtraction.fields.price },
-        }),
-      ).toThrow();
-    },
-  );
+  it.each([
+    "availabilityStatus",
+    "sold",
+    "verificationStatus",
+    "monthlyPayment",
+  ])("rejects forbidden extraction field %s", (fieldName) => {
+    expect(() =>
+      extractionEnvelopeSchema.parse({
+        ...validExtraction,
+        fields: {
+          ...validExtraction.fields,
+          [fieldName]: validExtraction.fields.price,
+        },
+      }),
+    ).toThrow();
+  });
 
   it("excludes forbidden top-level properties from the TypeScript type", () => {
     const envelope: ExtractionEnvelope = validExtraction;
@@ -311,6 +333,7 @@ git commit -m "test: specify extraction contract boundaries (#25)"
 ### Task 3: Implement the minimal schemas
 
 **Files:**
+
 - Create: `packages/contracts/src/source.ts`
 - Create: `packages/contracts/src/extraction.ts`
 - Create: `packages/contracts/src/index.ts`
@@ -352,6 +375,7 @@ git commit -m "feat: add strict extraction contracts (#25)"
 ### Task 4: Prove reproducibility and issue acceptance
 
 **Files:**
+
 - Modify only formatting changes reported by Prettier.
 
 - [ ] **Step 1: Reinstall from the frozen lockfile under Node 24.20.0**

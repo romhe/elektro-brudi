@@ -3,7 +3,7 @@ import {
   EXTRACTION_SCHEMA_VERSION,
   extractionEnvelopeSchema,
 } from "@elektro-brudi/contracts";
-import { CRAWL4AI_BASE_URL } from "./crawl4ai-client.js";
+import { CRAWL4AI_BASE_URL } from "./crawl4ai-client.ts";
 
 export interface ReferenceSource {
   readonly id: string;

@@ -1,5 +1,5 @@
-import { crawlReferenceSources, readCrawl4AIToken } from "./crawl4ai-client.js";
-import { buildProofReport, referenceSources } from "./reference-suite.js";
+import { crawlReferenceSources, readCrawl4AIToken } from "./crawl4ai-client.ts";
+import { buildProofReport, referenceSources } from "./reference-suite.ts";
 
 function failureResults(error: unknown) {
   const message =

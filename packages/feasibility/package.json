@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/cli.ts",
+    "test:package-import": "node --input-type=module --eval 'await import(\"./src/reference-suite.ts\"); await import(\"./src/crawl4ai-client.ts\")'",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },

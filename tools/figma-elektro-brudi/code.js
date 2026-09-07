@@ -1173,10 +1173,10 @@ async function build() {
   if (completeRoots.length) {
     await figma.setCurrentPageAsync(pages[2]);
     const existingScreens = completeRoots.find((node) => node.name === GENERATED_ROOTS[2]);
-    if (!existingScreens || !('findOne' in existingScreens)) {
+    if (!existingScreens) {
       throw new Error('Completed Key Screens root was not found.');
     }
-    focusOverview(existingScreens, 'Existing Overview focused.');
+    focusOverview(pages[2], 'Existing Overview focused.');
     figma.closePlugin('Existing Overview focused.');
     return;
   }

@@ -1,3 +1,7 @@
 .worktrees/
 .DS_Store
 node_modules/
+**/dist/
+dist/
+test-results/
+.build/

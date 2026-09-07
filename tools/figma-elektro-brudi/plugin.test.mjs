@@ -50,7 +50,7 @@ test('covers the required components and state language', () => {
 
   const requiredComponents = [
     'AppShell', 'TopNav', 'URLImport', 'JobProgress', 'StatusBadge',
-    'WinnerCard', 'ReferenceDelta', 'OfferRow', 'OfferCard',
+    'SelectedOfferInspector', 'ReferenceDelta', 'OfferRow', 'OfferCard',
     'ScoreBreakdown', 'EvidenceDrawer', 'EquipmentStateControl',
     'FinanceScenarioCard', 'FormField', 'InlineAlert', 'ConfirmDialog',
     'ModelDownload',
@@ -84,6 +84,24 @@ test('encodes the approved visual and product guardrails', () => {
   assert.equal(contract.equipmentWeight, 30);
   assert.equal(contract.verificationIsGate, true);
   assert.equal(contract.language, 'de-DE');
+});
+
+test('defines the table-first Overview contract', () => {
+  const require = createRequire(import.meta.url);
+  const { contract } = require(pluginPath);
+
+  assert.ok(contract.components.includes('SelectedOfferInspector'));
+  assert.ok(!contract.components.includes('WinnerCard'));
+  assert.deepEqual(contract.overviewTableColumns, [
+    'Rang', 'Fahrzeug', 'Verifikation', 'Kaufpreis', 'Kilometer',
+    'Effektiv/Monat', 'Golf-Differenz', 'Finanzierung', 'Ausstattung',
+    'Score', 'Aktualisiert', '',
+  ]);
+  assert.deepEqual(contract.overviewFilters, [
+    'Suche', 'Verifikation', 'Quelle', 'Finanzierung', 'Ausstattung',
+  ]);
+  assert.deepEqual(contract.overviewOffers.map((offer) => offer.order), [1, 2, 3, 4, 5, 6, 7]);
+  assert.equal(new Set(contract.overviewOffers.map((offer) => offer.order)).size, 7);
 });
 
 test('builds real variant sets and clickable prototype reactions', () => {

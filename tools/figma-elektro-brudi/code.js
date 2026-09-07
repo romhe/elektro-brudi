@@ -16,6 +16,21 @@ const contract = Object.freeze({
     { name: 'Overview · Completed · Mixed verification', width: 1440, height: 1024 },
     { name: 'Overview · Completed · Mixed verification · Mobile', width: 390, height: 844 },
   ],
+  overviewTableColumns: [
+    'Rang', 'Fahrzeug', 'Verifikation', 'Kaufpreis', 'Kilometer',
+    'Effektiv/Monat', 'Golf-Differenz', 'Finanzierung', 'Ausstattung',
+    'Score', 'Aktualisiert', '',
+  ],
+  overviewFilters: ['Suche', 'Verifikation', 'Quelle', 'Finanzierung', 'Ausstattung'],
+  overviewOffers: [
+    { order: 1, vehicle: 'Hyundai IONIQ 5 · Techniq', source: 'Autohaus Nord', verification: 'verifiziert', verificationTone: 'success', price: '36.490 €', mileage: '22.900 km', monthly: '499 €', golfDelta: '− 71 €', finance: 'zulässig', financeTone: 'success', equipment: '25 / 30', score: '84', updated: 'vor 2 Min.' },
+    { order: 2, vehicle: 'Kia EV6 · GT-Line', source: 'Kia Zentrum West', verification: 'verifiziert', verificationTone: 'success', price: '36.900 €', mileage: '24.800 km', monthly: '512 €', golfDelta: '− 58 €', finance: 'zulässig', financeTone: 'success', equipment: '27 / 30', score: '82', updated: 'vor 5 Min.' },
+    { order: 3, vehicle: 'VW ID.4 · Pro', source: 'mobile.de', verification: 'ungeprüft', verificationTone: 'warning', price: '34.750 €', mileage: '31.200 km', monthly: '486 €', golfDelta: '− 84 €', finance: 'prüfen', financeTone: 'warning', equipment: '18 / 30', score: '76', updated: 'vor 8 Min.' },
+    { order: 4, vehicle: 'Tesla Model Y · LR', source: 'EV Store Berlin', verification: 'teilweise', verificationTone: 'warning', price: '39.490 €', mileage: '18.100 km', monthly: '548 €', golfDelta: '− 22 €', finance: 'zulässig', financeTone: 'success', equipment: '22 / 30', score: '71', updated: 'vor 12 Min.' },
+    { order: 5, vehicle: 'Škoda Enyaq · 80', source: 'Škoda Partner Süd', verification: 'verifiziert', verificationTone: 'success', price: '37.950 €', mileage: '27.400 km', monthly: '531 €', golfDelta: '− 39 €', finance: 'zulässig', financeTone: 'success', equipment: '23 / 30', score: '69', updated: 'vor 18 Min.' },
+    { order: 6, vehicle: 'CUPRA Born · 77 kWh', source: 'mobile.de', verification: 'ungeprüft', verificationTone: 'warning', price: '33.890 €', mileage: '29.600 km', monthly: '477 €', golfDelta: '− 93 €', finance: 'prüfen', financeTone: 'warning', equipment: '16 / 30', score: '64', updated: 'vor 24 Min.' },
+    { order: 7, vehicle: 'VW ID.3 · Pro S', source: 'Autohaus Mitte', verification: 'verifiziert', verificationTone: 'success', price: '32.990 €', mileage: '41.200 km', monthly: '468 €', golfDelta: '− 102 €', finance: 'unzulässig', financeTone: 'error', equipment: '19 / 30', score: '58', updated: 'vor 31 Min.' },
+  ],
   referenceSections: [
     'Offer detail · Pattern · Desktop',
     'Offer detail · Pattern · Mobile',
@@ -24,7 +39,7 @@ const contract = Object.freeze({
   ],
   components: [
     'AppShell', 'TopNav', 'URLImport', 'JobProgress', 'StatusBadge',
-    'WinnerCard', 'ReferenceDelta', 'OfferRow', 'OfferCard',
+    'SelectedOfferInspector', 'ReferenceDelta', 'OfferRow', 'OfferCard',
     'ScoreBreakdown', 'EvidenceDrawer', 'EquipmentStateControl',
     'FinanceScenarioCard', 'FormField', 'InlineAlert', 'ConfirmDialog',
     'ModelDownload',

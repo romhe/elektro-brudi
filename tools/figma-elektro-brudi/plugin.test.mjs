@@ -117,7 +117,13 @@ test('keeps rank, filters, and selection details on mobile', () => {
   assert.match(pluginSource, /Rang 1/);
   assert.match(pluginSource, /Auswahl ansehen/);
   assert.match(pluginSource, /options\.stroke \|\| C\.border/);
-  assert.match(pluginSource, /v5-table-overview-focused/);
+  assert.match(pluginSource, /v6-visible-table-text/);
+});
+
+test('uses Inter instead of the non-rendering generic SF Pro family', () => {
+  assert.match(pluginSource, /const preferredFamilies = \['SF Pro Text', 'SF Pro Display'\]/);
+  assert.match(pluginSource, /const family = preferredFamily \|\| fallbackFamily/);
+  assert.doesNotMatch(pluginSource, /preferredFamilies = \['SF Pro Text', 'SF Pro Display', 'SF Pro'\]/);
 });
 
 test('builds real variant sets and clickable prototype reactions', () => {

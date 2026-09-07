@@ -92,7 +92,7 @@ const GENERATED_ROOTS = [
   '[ElektroBrudi] Key Screens',
 ];
 const BUILD_STATUS_KEY = 'elektro-brudi-build-status';
-const BUILD_COMPLETE = 'v5-table-overview-focused';
+const BUILD_COMPLETE = 'v6-visible-table-text';
 
 function rgb(hex) {
   const value = hex.replace('#', '');
@@ -1099,12 +1099,14 @@ function resolveFontStyles(available, family) {
 
 async function loadContext() {
   const available = await figma.listAvailableFontsAsync();
-  const preferredFamilies = ['SF Pro Text', 'SF Pro Display', 'SF Pro'];
-  const family = preferredFamilies.find((candidate) => available.some((item) => item.fontName.family === candidate));
-  if (!family) throw new Error('SF Pro is required but is not available in this Figma desktop environment.');
+  const preferredFamilies = ['SF Pro Text', 'SF Pro Display'];
+  const preferredFamily = preferredFamilies.find((candidate) => available.some((item) => item.fontName.family === candidate));
+  const fallbackFamily = available.some((item) => item.fontName.family === 'Inter') ? 'Inter' : '';
+  const family = preferredFamily || fallbackFamily;
+  if (!family) throw new Error('SF Pro Text, SF Pro Display, or Inter is required in this Figma desktop environment.');
   context.fontFamily = family;
   context.fonts = resolveFontStyles(available, family);
-  context.fallbackFamily = available.some((item) => item.fontName.family === 'Inter') ? 'Inter' : family;
+  context.fallbackFamily = fallbackFamily || family;
   context.fallbackFonts = resolveFontStyles(available, context.fallbackFamily);
   const fontsToLoad = new Map();
   for (const fontFamily of [context.fontFamily, context.fallbackFamily]) {

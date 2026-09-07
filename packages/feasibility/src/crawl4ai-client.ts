@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 
 export const CRAWL4AI_BASE_URL = "https://crawl4ai.locl.be";
+const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
 
 const keychainArguments = [
   "find-generic-password",
@@ -103,15 +104,46 @@ function selectMarkdown(result: Record<string, unknown>): string | null {
   return rawMarkdown?.trim() ? rawMarkdown : null;
 }
 
+async function fetchWithTimeout(
+  fetchImplementation: typeof fetch,
+  input: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Crawl4AI request timed out after ${timeoutMs} ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      fetchImplementation(input, { ...init, signal: controller.signal }),
+      timeout,
+    ]);
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 async function readVersion(
   baseUrl: string,
   token: string,
   fetchImplementation: typeof fetch,
+  requestTimeoutMs: number,
 ): Promise<string | null> {
   try {
-    const response = await fetchImplementation(`${baseUrl}/health`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await fetchWithTimeout(
+      fetchImplementation,
+      `${baseUrl}/health`,
+      { headers: { Authorization: `Bearer ${token}` } },
+      requestTimeoutMs,
+    );
     if (!response.ok) {
       return null;
     }
@@ -128,17 +160,23 @@ async function crawlSource(
   token: string,
   fetchImplementation: typeof fetch,
   now: () => number,
+  requestTimeoutMs: number,
 ): Promise<SourceTransportResult> {
   const startedAt = now();
   try {
-    const response = await fetchImplementation(`${baseUrl}/crawl`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+    const response = await fetchWithTimeout(
+      fetchImplementation,
+      `${baseUrl}/crawl`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ urls: [source.url] }),
       },
-      body: JSON.stringify({ urls: [source.url] }),
-    });
+      requestTimeoutMs,
+    );
     const durationMs = Math.max(0, now() - startedAt);
     if (!response.ok) {
       return {
@@ -228,14 +266,18 @@ export async function crawlReferenceSources(options: {
   readonly baseUrl?: string;
   readonly fetchImplementation?: typeof fetch;
   readonly now?: () => number;
+  readonly requestTimeoutMs?: number;
 }): Promise<CrawlSuiteTransportResult> {
   const baseUrl = (options.baseUrl ?? CRAWL4AI_BASE_URL).replace(/\/$/u, "");
   const fetchImplementation = options.fetchImplementation ?? fetch;
   const now = options.now ?? performance.now.bind(performance);
+  const requestTimeoutMs =
+    options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   const version = await readVersion(
     baseUrl,
     options.token,
     fetchImplementation,
+    requestTimeoutMs,
   );
   const results: SourceTransportResult[] = [];
 
@@ -247,6 +289,7 @@ export async function crawlReferenceSources(options: {
         options.token,
         fetchImplementation,
         now,
+        requestTimeoutMs,
       ),
     );
   }
@@ -254,8 +297,8 @@ export async function crawlReferenceSources(options: {
   const suiteFailure =
     results.length > 0 &&
     results.every(
-      ({ apiStatus }) =>
-        apiStatus === 401 || apiStatus === 403 || apiStatus === null,
+      ({ outcome, httpStatus }) =>
+        outcome === "FETCH_FAILED" && httpStatus === null,
     );
 
   return { version, results, suiteFailure };

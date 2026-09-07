@@ -136,4 +136,60 @@ describe("crawlReferenceSources", () => {
       error: "Crawl succeeded without usable Markdown",
     });
   });
+
+  it("times out one stalled source and continues with the next source", async () => {
+    let crawlIndex = 0;
+    const fetchImplementation = vi.fn(async (input: string | URL | Request) => {
+      if (String(input).endsWith("/health")) {
+        return Response.json({ status: "ok", version: "0.9.3" });
+      }
+      crawlIndex += 1;
+      if (crawlIndex === 1) {
+        return await new Promise<Response>(() => undefined);
+      }
+      return Response.json({
+        success: true,
+        results: [
+          {
+            url: sources[1]?.url,
+            success: true,
+            status_code: 200,
+            markdown: { fit_markdown: "Kaufpreis 29.990 EUR" },
+          },
+        ],
+      });
+    });
+
+    const result = await crawlReferenceSources({
+      sources: sources.slice(0, 2),
+      token: "secret",
+      fetchImplementation: fetchImplementation as typeof fetch,
+      requestTimeoutMs: 5,
+    });
+
+    expect(result.results[0]).toMatchObject({
+      outcome: "FETCH_FAILED",
+      error: "Crawl4AI request timed out after 5 ms",
+    });
+    expect(result.results[1]?.outcome).toBe("FETCHED");
+  });
+
+  it("marks an API-wide protocol failure as a suite failure", async () => {
+    const fetchImplementation = vi.fn(async (input: string | URL | Request) =>
+      String(input).endsWith("/health")
+        ? Response.json({ status: "ok", version: "0.9.3" })
+        : Response.json({ detail: "not found" }, { status: 404 }),
+    );
+
+    const result = await crawlReferenceSources({
+      sources: sources.slice(0, 2),
+      token: "secret",
+      fetchImplementation: fetchImplementation as typeof fetch,
+    });
+
+    expect(
+      result.results.every(({ outcome }) => outcome === "FETCH_FAILED"),
+    ).toBe(true);
+    expect(result.suiteFailure).toBe(true);
+  });
 });

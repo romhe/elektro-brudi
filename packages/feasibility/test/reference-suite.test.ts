@@ -97,6 +97,28 @@ Anhängerkupplung schwenkbar
     expect(claim?.evidenceText).toBe("AHK-Vorbereitung");
   });
 
+  it("associates qualifiers with the matching equipment clause", () => {
+    const markdown = `## Ausstattung
+ACC ohne Aufpreis
+ACC serienmäßig, Metallic-Lack optional gegen Aufpreis
+Rückfahrkamera, Anhängerkupplung nicht vorhanden
+`;
+    const extraction = extractSnapshot(markdown);
+
+    expect(extraction.equipment.adaptive_cruise_control?.state).toBe("PRESENT");
+    expect(extraction.equipment.reversing_camera?.state).toBe("PRESENT");
+    expect(extraction.equipment.tow_bar?.state).toBe("ABSENT");
+  });
+
+  it("bounds evidence while retaining an exact snapshot substring", () => {
+    const markdown = `## Ausstattung\n${"vorher ".repeat(80)}ACC${" nachher".repeat(80)}`;
+    const claim = extractSnapshot(markdown).equipment.adaptive_cruise_control;
+
+    expect(claim?.state).toBe("PRESENT");
+    expect(claim?.evidenceText?.length).toBeLessThanOrEqual(240);
+    expect(markdown).toContain(claim?.evidenceText ?? "missing evidence");
+  });
+
   it("leaves missing price and equipment unknown", () => {
     const extraction = extractSnapshot("# Fahrzeug\nKeine weiteren Angaben");
 
@@ -126,6 +148,18 @@ Ehem. empfohlener Verkaufspreis (UPE) 40.820 EUR
     expect(price?.value).toBe(23_880);
     expect(price?.evidenceText).toBe("40.820 €23.880 €");
     expect(price?.sourceSection).toBe("Kaufpreis");
+  });
+
+  it("associates purchase labels with their nearest amount", () => {
+    const withAccessory = extractSnapshot(
+      "Kaufpreis 29.990 EUR inklusive 10.000 EUR Sonderausstattung",
+    );
+    const withMonthlyRate = extractSnapshot(
+      "Kaufpreis 29.990 EUR, Monatsrate 299 EUR",
+    );
+
+    expect(withAccessory.fields.price?.value).toBe(29_990);
+    expect(withMonthlyRate.fields.price?.value).toBe(29_990);
   });
 });
 

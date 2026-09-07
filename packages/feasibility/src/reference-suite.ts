@@ -111,10 +111,7 @@ const subscriptionQualifier =
   /(?:abonnement|subscription|freischaltbar|nachträglich\s+aktivierbar|on[ -]?demand)/iu;
 const preparationQualifier =
   /(?:vorbereitet|vorbereitung|optional|optionale|gegen\s+aufpreis|preparation)/iu;
-const absenceQualifier =
-  /(?:\bohne\b|nicht\s+vorhanden|nicht\s+verbaut|entfällt|\bno\b)/iu;
-const monthlyPriceQualifier =
-  /(?:monat|monatl|rate|leasing|finanzier|pro\s+monat|\/\s*monat)/iu;
+const absenceQualifier = /(?:nicht\s+vorhanden|nicht\s+verbaut|entfällt)/iu;
 const purchasePriceQualifier =
   /(?:kaufpreis|barpreis|fahrzeugpreis|gesamtpreis|verkaufspreis)/iu;
 const nonPurchasePriceQualifier =
@@ -144,14 +141,69 @@ function collectEvidenceLines(markdown: string): EvidenceLine[] {
   return lines;
 }
 
-function classifyEquipmentLine(text: string): EquipmentState {
+function boundedEvidence(
+  text: string,
+  matchStart: number,
+  matchLength: number,
+  maximumLength = 240,
+): string {
+  if (text.length <= maximumLength) {
+    return text.trim();
+  }
+
+  const matchCenter = matchStart + Math.floor(matchLength / 2);
+  const maximumStart = text.length - maximumLength;
+  const start = Math.max(
+    0,
+    Math.min(maximumStart, matchCenter - Math.floor(maximumLength / 2)),
+  );
+  return text.slice(start, start + maximumLength).trim();
+}
+
+function clauseAt(
+  text: string,
+  matchStart: number,
+): {
+  readonly text: string;
+  readonly offset: number;
+} {
+  const before = text.slice(0, matchStart);
+  const previousDelimiter = Math.max(
+    before.lastIndexOf(","),
+    before.lastIndexOf(";"),
+    before.lastIndexOf("|"),
+  );
+  const remainder = text.slice(matchStart);
+  const nextDelimiterOffset = remainder.search(/[,;|]/u);
+  const start = previousDelimiter + 1;
+  const end =
+    nextDelimiterOffset === -1 ? text.length : matchStart + nextDelimiterOffset;
+  const leadingWhitespace =
+    /^\s*/u.exec(text.slice(start, end))?.[0].length ?? 0;
+
+  return {
+    text: text.slice(start, end).trim(),
+    offset: start + leadingWhitespace,
+  };
+}
+
+function classifyEquipmentClause(
+  text: string,
+  matchStart: number,
+  matchLength: number,
+): EquipmentState {
   if (subscriptionQualifier.test(text)) {
     return "SUBSCRIPTION_REQUIRED";
   }
   if (preparationQualifier.test(text)) {
     return "PREPARED_ONLY";
   }
-  if (absenceQualifier.test(text)) {
+  const beforeAlias = text.slice(0, matchStart);
+  const afterAlias = text.slice(matchStart + matchLength);
+  if (
+    /\b(?:ohne|no|kein(?:e|en|er|es)?)\s*$/iu.test(beforeAlias) ||
+    absenceQualifier.test(afterAlias)
+  ) {
     return "ABSENT";
   }
   return "PRESENT";
@@ -163,10 +215,24 @@ function extractEquipmentClaim(
 ): EquipmentClaim {
   const aliases = equipmentAliases[equipmentId];
   for (const line of lines) {
-    if (aliases.some((alias) => alias.test(line.text))) {
+    for (const alias of aliases) {
+      const lineMatch = alias.exec(line.text);
+      if (!lineMatch) {
+        continue;
+      }
+      const clause = clauseAt(line.text, lineMatch.index);
+      const clauseMatchStart = lineMatch.index - clause.offset;
       return {
-        state: classifyEquipmentLine(line.text),
-        evidenceText: line.text,
+        state: classifyEquipmentClause(
+          clause.text,
+          clauseMatchStart,
+          lineMatch[0].length,
+        ),
+        evidenceText: boundedEvidence(
+          clause.text,
+          clauseMatchStart,
+          lineMatch[0].length,
+        ),
         sourceSection: line.section,
         confidence: 1,
       };
@@ -181,7 +247,13 @@ function extractEquipmentClaim(
   };
 }
 
-function parseEuroAmounts(text: string): number[] {
+interface EuroAmount {
+  readonly value: number;
+  readonly start: number;
+  readonly end: number;
+}
+
+function parseEuroAmounts(text: string): EuroAmount[] {
   const suffixMatches = text.matchAll(
     /(?<amount>\d{1,3}(?:[.\s]\d{3})+|\d{4,6})(?:,\d{2})?\s*(?:€|EUR)/giu,
   );
@@ -190,31 +262,59 @@ function parseEuroAmounts(text: string): number[] {
   );
 
   return [...suffixMatches, ...prefixMatches]
-    .map((match) => match.groups?.amount)
-    .filter((amount): amount is string => amount !== undefined)
-    .map((amount) => Number.parseInt(amount.replace(/[.\s]/gu, ""), 10))
-    .filter((amount) => amount >= 5_000 && amount <= 500_000);
+    .map((match) => {
+      const amount = match.groups?.amount;
+      if (amount === undefined || match.index === undefined) {
+        return null;
+      }
+      return {
+        value: Number.parseInt(amount.replace(/[.\s]/gu, ""), 10),
+        start: match.index,
+        end: match.index + match[0].length,
+      };
+    })
+    .filter(
+      (amount): amount is EuroAmount =>
+        amount !== null && amount.value >= 5_000 && amount.value <= 500_000,
+    )
+    .sort((left, right) => left.start - right.start);
 }
 
 function extractPrice(lines: readonly EvidenceLine[]) {
   const candidates = lines
+    .filter(({ text }) => !nonPurchasePriceQualifier.test(text))
+    .map((line) => {
+      const amounts = parseEuroAmounts(line.text);
+      const purchaseMatch = purchasePriceQualifier.exec(line.text);
+      const amount = purchaseMatch
+        ? amounts.toSorted((left, right) => {
+            const qualifierStart = purchaseMatch.index;
+            const qualifierEnd = purchaseMatch.index + purchaseMatch[0].length;
+            const distance = (candidate: EuroAmount) =>
+              candidate.start >= qualifierEnd
+                ? candidate.start - qualifierEnd
+                : qualifierStart >= candidate.end
+                  ? qualifierStart - candidate.end
+                  : 0;
+            return distance(left) - distance(right);
+          })[0]
+        : amounts.toSorted((left, right) => left.value - right.value)[0];
+      return amount
+        ? { ...line, amount, hasPurchaseLabel: !!purchaseMatch }
+        : null;
+    })
     .filter(
-      ({ text }) =>
-        !monthlyPriceQualifier.test(text) &&
-        !nonPurchasePriceQualifier.test(text),
-    )
-    .map((line) => ({
-      ...line,
-      value: Math.min(...parseEuroAmounts(line.text)),
-    }))
-    .filter((candidate): candidate is EvidenceLine & { value: number } =>
-      Number.isFinite(candidate.value),
+      (
+        candidate,
+      ): candidate is EvidenceLine & {
+        amount: EuroAmount;
+        hasPurchaseLabel: boolean;
+      } => candidate !== null,
     );
   const candidate =
     candidates.find(
-      ({ text, section }) =>
-        purchasePriceQualifier.test(text) ||
-        purchasePriceQualifier.test(section),
+      ({ hasPurchaseLabel, section }) =>
+        hasPurchaseLabel || purchasePriceQualifier.test(section),
     ) ?? candidates[0];
 
   if (!candidate) {
@@ -222,8 +322,12 @@ function extractPrice(lines: readonly EvidenceLine[]) {
   }
 
   return {
-    value: candidate.value,
-    evidenceText: candidate.text,
+    value: candidate.amount.value,
+    evidenceText: boundedEvidence(
+      candidate.text,
+      candidate.amount.start,
+      candidate.amount.end - candidate.amount.start,
+    ),
     sourceSection: candidate.section,
     confidence: 1,
   } as const;

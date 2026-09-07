@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace only the desktop and mobile Offer Detail references with an answer-first layout that explains the recommendation, monthly installment, complete Golf comparison, and selected-credit terms without changing the user's adapted Overview.
+**Goal:** Replace only the desktop and mobile Offer Detail references with an answer-first layout that combines a prominent listing image and original-offer link with the recommendation, monthly installment, complete Golf comparison, and selected-credit terms without changing the user's adapted Overview.
 
 **Architecture:** Extend the existing no-network Figma development plugin with an explicit Offer Detail fixture, reusable financial-detail layout helpers, and a targeted two-frame updater. The updater builds and validates both replacement frames before swapping them into the completed Key Screens root; it never rebuilds or removes the root, Overview, import states, or Settings.
 
@@ -12,7 +12,8 @@
 
 ## File Map
 
-- Modify `tools/figma-elektro-brudi/code.js`: define the reference fixture, compose both answer-first layouts, and add the targeted safe updater.
+- Create `tools/figma-elektro-brudi/assets/ioniq5-reference.png`: clearly disclosed reference-only vehicle image used to assess the Figma media treatment.
+- Modify `tools/figma-elektro-brudi/code.js`: define the reference fixture, compose both answer-first layouts, embed the reference image, and add the targeted safe updater.
 - Modify `tools/figma-elektro-brudi/plugin.test.mjs`: lock the required content hierarchy and prove that the update path cannot rebuild the Overview.
 - Modify `tools/figma-elektro-brudi/README.md`: explain targeted rerun behavior and visual verification.
 - Reference `docs/plans/2026-09-07-answer-first-offer-detail-design.md`: approved design contract; do not change during implementation unless the user changes the design.
@@ -34,6 +35,9 @@ test('makes the selected financing scenario understandable at a glance', () => {
     pluginSource.indexOf('\nfunction buildSettingsReference('),
   );
   for (const label of [
+    'Quelle: mobile.de',
+    'Originalangebot öffnen ↗',
+    '1 von 12',
     'Warum dieses Angebot gut passt',
     'Deine Zahlungen',
     'Monatsrate',
@@ -57,6 +61,15 @@ test('distinguishes installment from effective monthly cost', () => {
   assert.match(pluginSource, /1\.104 € \/ Monat/);
   assert.match(pluginSource, /71 € \/ Monat günstiger/);
   assert.match(pluginSource, /Anzahlung, Raten, Schlussrate, Gebühren, laufende Kosten und Restwert/);
+});
+
+test('uses a prominent disclosed listing-media pattern', () => {
+  assert.match(pluginSource, /Listing image/);
+  assert.match(pluginSource, /Kein Fahrzeugbild verfügbar/);
+  assert.match(pluginSource, /Beispielfoto/);
+  assert.match(pluginSource, /Originalangebot öffnen ↗/);
+  assert.match(pluginSource, /sourceDomain: 'mobile\.de'/);
+  assert.match(pluginSource, /sourceUrl/);
 });
 
 test('shows the selected credit as aligned start, monthly, end, and total groups', () => {
@@ -103,13 +116,90 @@ git add tools/figma-elektro-brudi/plugin.test.mjs
 git commit -m "test: lock answer-first offer detail contract"
 ```
 
-### Task 2: Build the Answer-First Desktop and Mobile References
+### Task 2: Add a Disclosed Reference Image Asset
+
+**Files:**
+- Create: `tools/figma-elektro-brudi/assets/ioniq5-reference.png`
+- Modify: `tools/figma-elektro-brudi/code.js`
+- Test: `tools/figma-elektro-brudi/plugin.test.mjs`
+
+- [ ] **Step 1: Generate the reference-only vehicle image**
+
+Use the `imagegen` skill to create a 16:10, neutral daylight photograph-style image of a generic white electric crossover from a front three-quarter angle on an uncluttered dealership forecourt. Do not reproduce mobile.de branding, a real registration plate, a visible logo, or a specific copyrighted listing photograph. Save the resulting PNG at `tools/figma-elektro-brudi/assets/ioniq5-reference.png`.
+
+- [ ] **Step 2: Add the media fixture and encode the image for the no-network plugin**
+
+Add this minimal fixture plus an `IMAGE_BYTES_BASE64` constant containing the generated PNG bytes, then create the Figma image with:
+
+```js
+const OFFER_DETAIL = Object.freeze({
+  vehicle: 'Hyundai IONIQ 5 · Techniq',
+  sourceDomain: 'mobile.de',
+  sourceUrl: 'offer.sourceUrl',
+  imageAlt: 'Hyundai IONIQ 5 Techniq, Außenansicht vorne links',
+});
+
+function base64Bytes(value) {
+  const binary = figma.base64Decode(value);
+  return new Uint8Array(binary);
+}
+
+function listingImage(parent, width, height) {
+  const media = frame(parent, 'Listing image', { width, height, fill: C.subtle, radius: 12, clipsContent: true });
+  try {
+    const image = figma.createImage(base64Bytes(IMAGE_BYTES_BASE64));
+    media.fills = [{ type: 'IMAGE', imageHash: image.hash, scaleMode: 'FILL' }];
+  } catch (error) {
+    text(media, 'Kein Fahrzeugbild verfügbar', { size: 13, weight: 600, color: C.secondary });
+  }
+  const count = auto(media, 'Gallery position', 'HORIZONTAL', { x: 12, y: 12, fill: C.surface, radius: 12, paddingLeft: 9, paddingRight: 9, height: 24, counterAlign: 'CENTER' });
+  text(count, '1 von 12', { size: 10, weight: 600 });
+  const disclosure = auto(media, 'Image disclosure', 'HORIZONTAL', { x: 12, y: height - 36, fill: C.surface, radius: 10, paddingLeft: 8, paddingRight: 8, height: 24, counterAlign: 'CENTER' });
+  text(disclosure, 'Beispielfoto', { size: 10, weight: 600, color: C.secondary });
+  media.setPluginData('alt-text', OFFER_DETAIL.imageAlt);
+  return media;
+}
+```
+
+If absolute-positioned overlays conflict with auto layout, wrap the image fill and overlay labels in a non-auto-layout frame; do not remove the disclosure.
+
+- [ ] **Step 3: Add the source row**
+
+Place this directly below the image:
+
+```js
+function listingSource(parent, width) {
+  const row = auto(parent, 'Listing source', 'HORIZONTAL', { width, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
+  text(row, `Quelle: ${OFFER_DETAIL.sourceDomain}`, { size: 11, color: C.secondary });
+  const action = button(row, 'Originalangebot öffnen ↗', { kind: 'secondary', height: 40 });
+  action.setPluginData('external-url-binding', OFFER_DETAIL.sourceUrl);
+  return row;
+}
+```
+
+- [ ] **Step 4: Run the media contract tests**
+
+```bash
+node --check tools/figma-elektro-brudi/code.js
+node --test tools/figma-elektro-brudi/plugin.test.mjs
+```
+
+Expected: syntax check exits 0; the media test passes while the answer-first layout and targeted-updater tests remain red.
+
+- [ ] **Step 5: Commit the media pattern**
+
+```bash
+git add tools/figma-elektro-brudi/assets/ioniq5-reference.png tools/figma-elektro-brudi/code.js tools/figma-elektro-brudi/plugin.test.mjs
+git commit -m "feat: add offer detail listing media"
+```
+
+### Task 3: Build the Answer-First Desktop and Mobile References
 
 **Files:**
 - Modify: `tools/figma-elektro-brudi/code.js`
 - Test: `tools/figma-elektro-brudi/plugin.test.mjs`
 
-- [ ] **Step 1: Add the internally consistent display fixture**
+- [ ] **Step 1: Replace the minimal media fixture with the internally consistent display fixture**
 
 Place this after `contract`:
 
@@ -122,6 +212,9 @@ const OFFER_DETAIL = Object.freeze({
   mileage: '22.900 km',
   registration: 'EZ 04/2023',
   source: 'Autohaus Nord · vor 2 Min. aktualisiert',
+  sourceDomain: 'mobile.de',
+  sourceUrl: 'offer.sourceUrl',
+  imageAlt: 'Hyundai IONIQ 5 Techniq, Außenansicht vorne links',
   reasons: [
     '71 € / Monat günstiger im vollständigen Golf-Vergleich',
     '499 € Monatsrate liegt 51 € unter deinem Ratenbudget',
@@ -182,7 +275,7 @@ function financeGroup(parent, title, rows, width) {
 
 - [ ] **Step 3: Replace the desktop composition**
 
-Rewrite `buildOfferDetailReference` so the desktop branch creates, in order:
+Rewrite `buildOfferDetailReference` so the desktop branch creates a 40/60 hero: `listingImage` plus `listingSource` on the left, and the following identity/decision/payment content on the right:
 
 ```js
 const identity = auto(content, 'Offer identity', 'VERTICAL', { width: contentWidth, gap: 6 });
@@ -219,7 +312,8 @@ Finally render `Warum 84 von 100 Punkten?` with structured Finance and Equipment
 Use the same fixture and helpers, but set the frame height to `1500` and stack content in this exact order:
 
 ```js
-['Offer identity', 'Warum dieses Angebot gut passt', 'Deine Zahlungen',
+['Offer identity', 'Listing image', 'Listing source',
+ 'Warum dieses Angebot gut passt', 'Deine Zahlungen',
  'Vergleich mit deinem Golf', 'Ausgewählte Finanzierung',
  'Alternative Finanzierungen', 'Warum 84 von 100 Punkten?',
  'Ausstattung & Belege']
@@ -243,7 +337,7 @@ git add tools/figma-elektro-brudi/code.js tools/figma-elektro-brudi/plugin.test.
 git commit -m "feat: redesign offer detail around user decisions"
 ```
 
-### Task 3: Add the Safe Targeted Figma Update Path
+### Task 4: Add the Safe Targeted Figma Update Path
 
 **Files:**
 - Modify: `tools/figma-elektro-brudi/code.js`
@@ -357,7 +451,7 @@ git add tools/figma-elektro-brudi/code.js tools/figma-elektro-brudi/plugin.test.
 git commit -m "fix: update only Figma offer detail frames"
 ```
 
-### Task 4: Document and Verify the Figma Result
+### Task 5: Document and Verify the Figma Result
 
 **Files:**
 - Modify: `tools/figma-elektro-brudi/README.md`
@@ -403,7 +497,7 @@ For each exact frame name, select it and press **Shift+2**:
 - `Offer detail · Pattern · Desktop`
 - `Offer detail · Pattern · Mobile`
 
-Confirm that all text is visible, no row is clipped, credit values align, `499 €` is labeled as the monthly installment, one-time payments are adjacent, and `71 € / Monat günstiger` is presented as the complete effective comparison. Confirm the rendered font is SF Pro Text/Display or the established Inter fallback; a blank or zero-width text node fails verification.
+Confirm that the vehicle image is prominent and correctly cropped, `Beispielfoto` is visible, the source domain and `Originalangebot öffnen ↗` appear beside it, all text is visible, no row is clipped, credit values align, `499 €` is labeled as the monthly installment, one-time payments are adjacent, and `71 € / Monat günstiger` is presented as the complete effective comparison. Confirm the rendered font is SF Pro Text/Display or the established Inter fallback; a blank or zero-width text node fails verification.
 
 - [ ] **Step 6: Prove the adapted Overview was preserved**
 
@@ -415,6 +509,6 @@ Export the desktop and mobile Offer Detail frames as PNGs and attach them with t
 
 ## Self-Review Results
 
-- Spec coverage: recommendation reasons, rate, one-time payments, complete Golf comparison, selected-credit groups, score explanation, evidence/corrections, responsive behavior, illustrative-data disclosure, and Overview preservation each map to an explicit task.
+- Spec coverage: prominent disclosed imagery, original-offer access, recommendation reasons, rate, one-time payments, complete Golf comparison, selected-credit groups, score explanation, evidence/corrections, responsive behavior, illustrative-data disclosure, and Overview preservation each map to an explicit task.
 - Placeholder scan: no `TBD`, `TODO`, or unspecified implementation step remains.
 - Type consistency: `updateOfferDetailReferences`, `exactDescendant`, `overviewIdentity`, `assertReadableDetail`, `DETAIL_BUILD_STATUS_KEY`, and `DETAIL_BUILD_COMPLETE` use the same names in tests and implementation steps.

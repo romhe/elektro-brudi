@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   MOBILE_REFERENCE_URL,
   buildMobileProbeFailure,
   classifyMobileSnapshot,
+  runMobilePlaywrightProbe,
 } from "../src/mobile-playwright-probe.js";
 
 describe("classifyMobileSnapshot", () => {
@@ -44,10 +45,10 @@ ${"additional listing copy ".repeat(30)}`;
       createHash("sha256").update(renderedText).digest("hex"),
     );
     expect(result.extraction?.fields.price?.value).toBe(29_990);
-    expect(
-      result.extraction?.equipment.adaptive_cruise_control.state,
-    ).toBe("PRESENT");
-    expect(result.extraction?.equipment.carplay_android_auto.state).toBe(
+    expect(result.extraction?.equipment.adaptive_cruise_control?.state).toBe(
+      "PRESENT",
+    );
+    expect(result.extraction?.equipment.carplay_android_auto?.state).toBe(
       "PRESENT",
     );
     expect(JSON.stringify(result)).not.toContain(renderedText);
@@ -92,6 +93,51 @@ describe("buildMobileProbeFailure", () => {
       contentSha256: null,
       extraction: null,
       error: "Browser did not start",
+    });
+  });
+});
+
+describe("runMobilePlaywrightProbe", () => {
+  it("navigates the fixed URL and classifies the rendered result", async () => {
+    const session = {
+      navigate: vi.fn(async () => ({ httpStatus: 200 })),
+      title: vi.fn(async () => "VW ID.4"),
+      bodyText: vi.fn(async () => "Kaufpreis 29.990 EUR\nApple CarPlay"),
+      finalUrl: vi.fn(() => MOBILE_REFERENCE_URL),
+      close: vi.fn(async () => undefined),
+    };
+    const now = vi.fn().mockReturnValueOnce(100).mockReturnValueOnce(440);
+
+    const result = await runMobilePlaywrightProbe(async () => session, now);
+
+    expect(session.navigate).toHaveBeenCalledWith(MOBILE_REFERENCE_URL, 45_000);
+    expect(session.close).toHaveBeenCalledOnce();
+    expect(result.durationMs).toBe(340);
+    expect(result.outcome).toBe("FETCHED");
+    expect(result.extraction?.equipment.carplay_android_auto?.state).toBe(
+      "PRESENT",
+    );
+  });
+
+  it("closes the session after a navigation failure", async () => {
+    const session = {
+      navigate: vi.fn(async () => {
+        throw new Error("Navigation timed out");
+      }),
+      title: vi.fn(async () => ""),
+      bodyText: vi.fn(async () => ""),
+      finalUrl: vi.fn(() => MOBILE_REFERENCE_URL),
+      close: vi.fn(async () => undefined),
+    };
+    const now = vi.fn().mockReturnValueOnce(10).mockReturnValueOnce(60);
+
+    const result = await runMobilePlaywrightProbe(async () => session, now);
+
+    expect(session.close).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({
+      outcome: "FETCH_FAILED",
+      durationMs: 50,
+      error: "Navigation timed out",
     });
   });
 });

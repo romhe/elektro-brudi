@@ -13,6 +13,7 @@
 ### Task 1: Add the probe contract and classifier
 
 **Files:**
+
 - Create: `packages/feasibility/src/mobile-playwright-probe.ts`
 - Create: `packages/feasibility/test/mobile-playwright-probe.test.ts`
 
@@ -42,7 +43,9 @@ const fetched = classifyMobileSnapshot({
 });
 expect(fetched.outcome).toBe("FETCHED");
 expect(fetched.extraction?.fields.price?.value).toBe(29_990);
-expect(fetched.extraction?.equipment.adaptive_cruise_control.state).toBe("PRESENT");
+expect(fetched.extraction?.equipment.adaptive_cruise_control.state).toBe(
+  "PRESENT",
+);
 expect(JSON.stringify(fetched)).not.toContain("Kaufpreis 29.990 EUR\nACC");
 ```
 
@@ -68,10 +71,7 @@ export const MOBILE_REFERENCE_URL = referenceSources.find(
 )!.url;
 
 export type MobileProbeOutcome =
-  | "FETCHED"
-  | "PARTIAL"
-  | "BLOCKED"
-  | "FETCH_FAILED";
+  "FETCHED" | "PARTIAL" | "BLOCKED" | "FETCH_FAILED";
 
 const blockedMarker =
   /(?:access denied|zugriff verweigert|captcha|security reasons)/iu;
@@ -99,6 +99,7 @@ git commit -m "feat(feasibility): classify mobile browser captures"
 ### Task 2: Add the native headed runner and command
 
 **Files:**
+
 - Create: `packages/feasibility/src/mobile-playwright-cli.ts`
 - Modify: `packages/feasibility/package.json`
 - Modify: `package.json`
@@ -177,6 +178,7 @@ git commit -m "feat(feasibility): add headed mobile Playwright probe"
 ### Task 3: Install Chromium and execute the real proof
 
 **Files:**
+
 - Modify only if a live-result bug requires a regression test and minimal fix.
 
 - [ ] **Step 1: Install the pinned browser binary**

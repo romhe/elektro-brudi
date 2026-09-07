@@ -6,10 +6,7 @@ export const MOBILE_REFERENCE_URL = referenceSources.find(
 )!.url;
 
 export type MobileProbeOutcome =
-  | "FETCHED"
-  | "PARTIAL"
-  | "BLOCKED"
-  | "FETCH_FAILED";
+  "FETCHED" | "PARTIAL" | "BLOCKED" | "FETCH_FAILED";
 
 interface MobileSnapshotInput {
   readonly requestedUrl: string;
@@ -19,6 +16,19 @@ interface MobileSnapshotInput {
   readonly renderedText: string;
   readonly durationMs: number;
 }
+
+export interface MobileBrowserSession {
+  readonly navigate: (
+    url: string,
+    timeoutMs: number,
+  ) => Promise<{ readonly httpStatus: number | null }>;
+  readonly title: () => Promise<string>;
+  readonly bodyText: () => Promise<string>;
+  readonly finalUrl: () => string;
+  readonly close: () => Promise<void>;
+}
+
+export type MobileBrowserSessionFactory = () => Promise<MobileBrowserSession>;
 
 export interface MobileProbeResult {
   readonly reportVersion: "1.0.0";
@@ -115,4 +125,38 @@ export function buildMobileProbeFailure(input: {
         ? input.error.message
         : "Unknown browser failure",
   };
+}
+
+export async function runMobilePlaywrightProbe(
+  createSession: MobileBrowserSessionFactory,
+  now: () => number = performance.now.bind(performance),
+): Promise<MobileProbeResult> {
+  const startedAt = now();
+  let session: MobileBrowserSession | undefined;
+
+  try {
+    session = await createSession();
+    const navigation = await session.navigate(MOBILE_REFERENCE_URL, 45_000);
+    const [title, renderedText] = await Promise.all([
+      session.title(),
+      session.bodyText(),
+    ]);
+
+    return classifyMobileSnapshot({
+      requestedUrl: MOBILE_REFERENCE_URL,
+      finalUrl: session.finalUrl(),
+      httpStatus: navigation.httpStatus,
+      title,
+      renderedText,
+      durationMs: Math.max(0, now() - startedAt),
+    });
+  } catch (error) {
+    return buildMobileProbeFailure({
+      requestedUrl: MOBILE_REFERENCE_URL,
+      durationMs: Math.max(0, now() - startedAt),
+      error,
+    });
+  } finally {
+    await session?.close();
+  }
 }

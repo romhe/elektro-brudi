@@ -9,6 +9,7 @@
     "pnpm": "12.3.4"
   },
   "scripts": {
+    "feasibility:mobile": "pnpm --filter @elektro-brudi/feasibility mobile:playwright",
     "feasibility:run": "pnpm --filter @elektro-brudi/feasibility start",
     "lint": "eslint . && prettier --check .",
     "typecheck": "pnpm -r typecheck",

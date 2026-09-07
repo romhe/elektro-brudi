@@ -62,8 +62,8 @@ export const equipmentStateSchema = z.enum([
 export const equipmentClaimSchema = z
   .strictObject({
     state: equipmentStateSchema,
-    evidenceText: nonEmptyStringSchema.nullable().optional(),
-    sourceSection: nonEmptyStringSchema.nullable().optional(),
+    evidenceText: nonEmptyStringSchema.nullable(),
+    sourceSection: nonEmptyStringSchema.nullable(),
     confidence: z.number().min(0).max(1),
   })
   .superRefine((claim, context) => {

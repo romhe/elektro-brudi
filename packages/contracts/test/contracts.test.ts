@@ -188,6 +188,32 @@ describe("extractionEnvelopeSchema", () => {
     );
   });
 
+  it.each([
+    [
+      "evidence text",
+      {
+        state: "UNKNOWN",
+        sourceSection: null,
+        confidence: 0.98,
+      },
+    ],
+    [
+      "source section",
+      {
+        state: "UNKNOWN",
+        evidenceText: null,
+        confidence: 0.98,
+      },
+    ],
+  ] as const)("rejects UNKNOWN equipment with omitted %s", (_label, claim) => {
+    expect(() =>
+      extractionEnvelopeSchema.parse({
+        ...validExtraction,
+        equipment: { heat_pump: claim },
+      }),
+    ).toThrow();
+  });
+
   it("rejects an invalid snapshot SHA-256", () => {
     expect(() =>
       extractionEnvelopeSchema.parse({

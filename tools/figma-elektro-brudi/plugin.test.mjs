@@ -165,3 +165,86 @@ test('lays text out before assigning characters and falls back on zero bounds', 
   assert.match(textFunction, /node\.width < 1 \|\| node\.height < 1/);
   assert.match(textFunction, /context\.fallbackFamily/);
 });
+
+test('makes the selected financing scenario understandable at a glance', () => {
+  const offerDetailFunction = pluginSource.slice(
+    pluginSource.indexOf('function buildOfferDetailReference('),
+    pluginSource.indexOf('\nfunction buildSettingsReference('),
+  );
+  const requiredLabels = [
+    'Quelle: mobile.de',
+    'Originalangebot öffnen ↗',
+    '1 von 12',
+    'Warum dieses Angebot gut passt',
+    'Deine Zahlungen',
+    'Monatsrate',
+    'Heute',
+    'Am Ende',
+    'Vergleich mit deinem Golf',
+    'Ausgewählte Finanzierung',
+    'Effektiver Jahreszins',
+    'Gesamtkosten des Kredits',
+    'Gesamtbetrag inkl. Anzahlung',
+    'Warum 84 von 100 Punkten?',
+  ];
+
+  for (const label of requiredLabels) {
+    assert.ok(offerDetailFunction.includes(label), `missing Offer Detail label: ${label}`);
+  }
+  assert.doesNotMatch(offerDetailFunction, /FINANCE_ELIGIBLE/);
+});
+
+test('distinguishes installment from effective monthly cost', () => {
+  const requiredCopy = [
+    '499 € Monatsrate',
+    '1.033 € / Monat',
+    '1.104 € / Monat',
+    '71 € / Monat günstiger',
+    'Anzahlung, Raten, Schlussrate, Gebühren, laufende Kosten und Restwert',
+  ];
+
+  for (const copy of requiredCopy) {
+    assert.ok(pluginSource.includes(copy), `missing financing copy: ${copy}`);
+  }
+});
+
+test('uses a prominent disclosed listing-media pattern', () => {
+  const requiredMediaContract = [
+    'Listing image',
+    'Kein Fahrzeugbild verfügbar',
+    'Beispielfoto',
+    'Originalangebot öffnen ↗',
+    "sourceDomain: 'mobile.de'",
+    'sourceUrl',
+  ];
+
+  for (const value of requiredMediaContract) {
+    assert.ok(pluginSource.includes(value), `missing listing-media contract: ${value}`);
+  }
+});
+
+test('shows the selected credit as aligned start, monthly, end, and total groups', () => {
+  for (const group of ['Start', 'Monatlich', 'Am Ende', 'Gesamt']) {
+    assert.ok(pluginSource.includes(`Finance group · ${group}`), `missing finance group: ${group}`);
+  }
+  assert.match(pluginSource, /Beispieldaten: Zins, Schlussrate und Gesamtkosten/);
+  assert.match(pluginSource, /Hyundai Finance/);
+  assert.match(pluginSource, /Ballonfinanzierung/);
+});
+
+test('updates only the two exact Offer Detail frames', () => {
+  const requiredUpdateContract = [
+    'function updateOfferDetailReferences(',
+    'contract.referenceSections[0]',
+    'contract.referenceSections[1]',
+    'Offer detail · updating · Desktop',
+    'Offer detail · updating · Mobile',
+    'Overview changed during Offer Detail update',
+  ];
+
+  for (const value of requiredUpdateContract) {
+    assert.ok(pluginSource.includes(value), `missing targeted update contract: ${value}`);
+  }
+  assert.doesNotMatch(pluginSource, /existingScreens\.remove\(/);
+  assert.doesNotMatch(pluginSource, /protectedOverview\.remove\(/);
+});

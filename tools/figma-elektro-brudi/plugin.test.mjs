@@ -10,6 +10,30 @@ const manifestPath = path.join(directory, 'manifest.json');
 const pluginPath = path.join(directory, 'code.js');
 const pluginSource = existsSync(pluginPath) ? readFileSync(pluginPath, 'utf8') : '';
 
+function sourceSlice(startMarker, endMarker) {
+  const start = pluginSource.indexOf(startMarker);
+  const end = pluginSource.indexOf(endMarker, start + startMarker.length);
+  return start >= 0 && end > start ? pluginSource.slice(start, end) : '';
+}
+
+const offerDetailFixtureSource = sourceSlice(
+  'const OFFER_DETAIL = Object.freeze(',
+  "\nif (typeof module !== 'undefined'",
+);
+const offerDetailHelpersSource = sourceSlice(
+  'function listingImage(',
+  '\nfunction buildOfferDetailReference(',
+);
+const offerDetailBuilderSource = sourceSlice(
+  'function buildOfferDetailReference(',
+  '\nfunction buildSettingsReference(',
+);
+const offerDetailRegionSource = [
+  offerDetailFixtureSource,
+  offerDetailHelpersSource,
+  offerDetailBuilderSource,
+].join('\n');
+
 test('declares a local Figma design plugin with no network access', () => {
   assert.ok(existsSync(manifestPath), 'manifest.json must exist');
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
@@ -167,12 +191,7 @@ test('lays text out before assigning characters and falls back on zero bounds', 
 });
 
 test('makes the selected financing scenario understandable at a glance', () => {
-  const offerDetailFunction = pluginSource.slice(
-    pluginSource.indexOf('function buildOfferDetailReference('),
-    pluginSource.indexOf('\nfunction buildSettingsReference('),
-  );
-  const requiredLabels = [
-    'Quelle: mobile.de',
+  const requiredRegionLabels = [
     'Originalangebot öffnen ↗',
     '1 von 12',
     'Warum dieses Angebot gut passt',
@@ -188,53 +207,75 @@ test('makes the selected financing scenario understandable at a glance', () => {
     'Warum 84 von 100 Punkten?',
   ];
 
-  for (const label of requiredLabels) {
-    assert.ok(offerDetailFunction.includes(label), `missing Offer Detail label: ${label}`);
+  for (const label of requiredRegionLabels) {
+    assert.ok(offerDetailRegionSource.includes(label), `missing Offer Detail label: ${label}`);
   }
-  assert.doesNotMatch(offerDetailFunction, /FINANCE_ELIGIBLE/);
+  assert.match(offerDetailFixtureSource, /sourceDomain\s*:\s*['"]mobile\.de['"]/);
+  assert.match(offerDetailHelpersSource, /Quelle: \$\{OFFER_DETAIL\.sourceDomain\}/);
+  assert.match(offerDetailBuilderSource, /OFFER_DETAIL\.payment\./);
+  assert.match(offerDetailBuilderSource, /OFFER_DETAIL\.comparison\./);
+  assert.match(offerDetailBuilderSource, /OFFER_DETAIL\.finance\./);
+  assert.doesNotMatch(offerDetailBuilderSource, /FINANCE_ELIGIBLE/);
 });
 
 test('distinguishes installment from effective monthly cost', () => {
-  const requiredCopy = [
+  const requiredFixtureValues = [
     '499 € Monatsrate',
     '1.033 € / Monat',
     '1.104 € / Monat',
     '71 € / Monat günstiger',
-    'Anzahlung, Raten, Schlussrate, Gebühren, laufende Kosten und Restwert',
   ];
 
-  for (const copy of requiredCopy) {
-    assert.ok(pluginSource.includes(copy), `missing financing copy: ${copy}`);
+  for (const value of requiredFixtureValues) {
+    assert.ok(offerDetailFixtureSource.includes(value), `missing financing fixture value: ${value}`);
   }
+  assert.match(offerDetailBuilderSource, /Anzahlung, Raten, Schlussrate, Gebühren, laufende Kosten und Restwert/);
+  assert.match(offerDetailBuilderSource, /OFFER_DETAIL\.payment\./);
+  assert.match(offerDetailBuilderSource, /OFFER_DETAIL\.comparison\./);
 });
 
 test('uses a prominent disclosed listing-media pattern', () => {
-  const requiredMediaContract = [
+  const requiredHelperCopy = [
     'Listing image',
     'Kein Fahrzeugbild verfügbar',
     'Beispielfoto',
     'Originalangebot öffnen ↗',
-    "sourceDomain: 'mobile.de'",
-    'sourceUrl',
   ];
 
-  for (const value of requiredMediaContract) {
-    assert.ok(pluginSource.includes(value), `missing listing-media contract: ${value}`);
+  for (const copy of requiredHelperCopy) {
+    assert.ok(offerDetailHelpersSource.includes(copy), `missing listing-media contract: ${copy}`);
   }
+  assert.match(offerDetailFixtureSource, /sourceDomain\s*:\s*['"]mobile\.de['"]/);
+  assert.match(offerDetailFixtureSource, /sourceUrl\s*:/);
+  assert.match(offerDetailHelpersSource, /OFFER_DETAIL\.sourceUrl/);
+  assert.match(offerDetailBuilderSource, /listingImage\s*\(/);
+  assert.match(offerDetailBuilderSource, /listingSource\s*\(/);
 });
 
 test('shows the selected credit as aligned start, monthly, end, and total groups', () => {
-  for (const group of ['Start', 'Monatlich', 'Am Ende', 'Gesamt']) {
-    assert.ok(pluginSource.includes(`Finance group · ${group}`), `missing finance group: ${group}`);
+  assert.ok(
+    offerDetailHelpersSource.includes('`Finance group · ${title}`'),
+    'financeGroup must name each rendered group',
+  );
+  for (const [title, key] of [['Start', 'start'], ['Monatlich', 'monthly'], ['Am Ende', 'end'], ['Gesamt', 'total']]) {
+    const call = new RegExp(`financeGroup\\([^;]*['"]${title}['"][^;]*OFFER_DETAIL\\.finance\\.${key}`);
+    assert.match(offerDetailBuilderSource, call, `missing financeGroup call for ${title}`);
   }
-  assert.match(pluginSource, /Beispieldaten: Zins, Schlussrate und Gesamtkosten/);
-  assert.match(pluginSource, /Hyundai Finance/);
-  assert.match(pluginSource, /Ballonfinanzierung/);
+  assert.match(offerDetailBuilderSource, /Beispieldaten: Zins, Schlussrate und Gesamtkosten/);
+  assert.match(offerDetailFixtureSource, /Hyundai Finance/);
+  assert.match(offerDetailFixtureSource, /Ballonfinanzierung/);
 });
 
 test('updates only the two exact Offer Detail frames', () => {
-  const requiredUpdateContract = [
+  const updaterSource = sourceSlice(
     'function updateOfferDetailReferences(',
+    '\nasync function build(',
+  );
+  const completedRootBranchSource = sourceSlice(
+    '  if (completeRoots.length) {',
+    '\n  await loadContext();\n  let foundations;',
+  );
+  const requiredUpdaterContract = [
     'contract.referenceSections[0]',
     'contract.referenceSections[1]',
     'Offer detail · updating · Desktop',
@@ -242,9 +283,42 @@ test('updates only the two exact Offer Detail frames', () => {
     'Overview changed during Offer Detail update',
   ];
 
-  for (const value of requiredUpdateContract) {
-    assert.ok(pluginSource.includes(value), `missing targeted update contract: ${value}`);
+  assert.ok(updaterSource, 'missing updateOfferDetailReferences function');
+  assert.ok(completedRootBranchSource, 'missing completed-root update branch');
+  for (const value of requiredUpdaterContract) {
+    assert.ok(updaterSource.includes(value), `missing targeted update contract: ${value}`);
   }
-  assert.doesNotMatch(pluginSource, /existingScreens\.remove\(/);
-  assert.doesNotMatch(pluginSource, /protectedOverview\.remove\(/);
+  assert.match(updaterSource, /const oldDesktop\s*=\s*exactDescendant\(root,\s*desktopName\)/);
+  assert.match(updaterSource, /const oldMobile\s*=\s*exactDescendant\(root,\s*mobileName\)/);
+  assert.match(updaterSource, /const protectedOverview\s*=\s*overviewIdentity\(root\)/);
+  assert.match(updaterSource, /overviewIdentity\(root\)\s*!==\s*protectedOverview/);
+
+  const desktopValidation = updaterSource.indexOf('assertReadableDetail(desktop');
+  const mobileValidation = updaterSource.indexOf('assertReadableDetail(mobile');
+  const overviewValidation = updaterSource.indexOf('overviewIdentity(root) !== protectedOverview');
+  const desktopRemoval = updaterSource.indexOf('oldDesktop.remove()');
+  const mobileRemoval = updaterSource.indexOf('oldMobile.remove()');
+  for (const [name, position] of [
+    ['desktop validation', desktopValidation],
+    ['mobile validation', mobileValidation],
+    ['Overview validation', overviewValidation],
+    ['old desktop removal', desktopRemoval],
+    ['old mobile removal', mobileRemoval],
+  ]) {
+    assert.ok(position >= 0, `missing ${name}`);
+  }
+  assert.ok(desktopValidation < desktopRemoval, 'desktop must be validated before old desktop removal');
+  assert.ok(mobileValidation < desktopRemoval, 'mobile must be validated before old desktop removal');
+  assert.ok(overviewValidation < desktopRemoval, 'Overview must be validated before old desktop removal');
+  assert.ok(desktopValidation < mobileRemoval, 'desktop must be validated before old mobile removal');
+  assert.ok(mobileValidation < mobileRemoval, 'mobile must be validated before old mobile removal');
+  assert.ok(overviewValidation < mobileRemoval, 'Overview must be validated before old mobile removal');
+
+  assert.match(completedRootBranchSource, /updateOfferDetailReferences\(existingScreens\)/);
+  const updatePathSource = `${updaterSource}\n${completedRootBranchSource}`;
+  assert.doesNotMatch(updatePathSource, /\bbuildKeyScreens\s*\(/);
+  for (const target of ['root', 'existingScreens', 'protectedOverview']) {
+    const destructiveCall = new RegExp(`\\b${target}\\s*\\.\\s*(?:remove|removeChild)\\s*\\(`);
+    assert.doesNotMatch(updatePathSource, destructiveCall, `${target} must not be removed in the update path`);
+  }
 });

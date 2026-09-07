@@ -1,6 +1,14 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import type { ExtractionEnvelope } from "../src/index.js";
+import type { ExtractionEnvelope, SourceFixture } from "../src/index.js";
 import { extractionEnvelopeSchema, sourceFixtureSchema } from "../src/index.js";
+
+const forbiddenExtractionKeys = [
+  ["finance", "monthlyPayment"],
+  ["leasing", "leasingRate"],
+  ["availability", "availabilityStatus"],
+  ["sold", "sold"],
+  ["verification", "verificationStatus"],
+] as const;
 
 const validSource = {
   fixtureId: "dealer-detail-001",
@@ -11,7 +19,7 @@ const validSource = {
   capturedAt: "2026-09-07T10:00:00.000Z",
   contentSha256: "a".repeat(64),
   split: "DEV",
-} as const;
+} satisfies SourceFixture;
 
 const validExtraction = {
   schemaVersion: "1.0.0",
@@ -35,7 +43,7 @@ const validExtraction = {
     },
   },
   diagnostics: [],
-} as const;
+} satisfies ExtractionEnvelope;
 
 describe("sourceFixtureSchema", () => {
   it("accepts a valid source fixture", () => {
@@ -46,6 +54,11 @@ describe("sourceFixtureSchema", () => {
     expect(() =>
       sourceFixtureSchema.parse({ ...validSource, pageKind }),
     ).toThrow();
+  });
+
+  it("accepts a search page", () => {
+    const searchSource = { ...validSource, pageKind: "SEARCH" } as const;
+    expect(sourceFixtureSchema.parse(searchSource)).toEqual(searchSource);
   });
 
   it("rejects an unknown fetch outcome", () => {
@@ -62,6 +75,24 @@ describe("sourceFixtureSchema", () => {
       sourceFixtureSchema.parse({
         ...validSource,
         canonicalUrl: "http://dealer.example/001",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects an invalid content SHA-256", () => {
+    expect(() =>
+      sourceFixtureSchema.parse({
+        ...validSource,
+        contentSha256: "not-a-sha-256",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects an invalid capture timestamp", () => {
+    expect(() =>
+      sourceFixtureSchema.parse({
+        ...validSource,
+        capturedAt: "not-a-timestamp",
       }),
     ).toThrow();
   });
@@ -95,16 +126,17 @@ describe("extractionEnvelopeSchema", () => {
     ).toThrow();
   });
 
-  it("rejects claims without evidence", () => {
+  it.each([
+    ["evidence text", "evidenceText"],
+    ["source section", "sourceSection"],
+  ] as const)("rejects a non-null field claim without %s", (_label, key) => {
     expect(() =>
       extractionEnvelopeSchema.parse({
         ...validExtraction,
         fields: {
           price: {
-            value: 29990,
-            evidenceText: null,
-            sourceSection: null,
-            confidence: 0.99,
+            ...validExtraction.fields.price,
+            [key]: null,
           },
         },
       }),
@@ -112,25 +144,97 @@ describe("extractionEnvelopeSchema", () => {
   });
 
   it.each([
-    "availabilityStatus",
-    "sold",
-    "verificationStatus",
-    "monthlyPayment",
-  ])("rejects forbidden extraction field %s", (fieldName) => {
+    ["PRESENT", "evidence text", "evidenceText"],
+    ["PRESENT", "source section", "sourceSection"],
+    ["ABSENT", "evidence text", "evidenceText"],
+    ["ABSENT", "source section", "sourceSection"],
+    ["PREPARED_ONLY", "evidence text", "evidenceText"],
+    ["PREPARED_ONLY", "source section", "sourceSection"],
+    ["SUBSCRIPTION_REQUIRED", "evidence text", "evidenceText"],
+    ["SUBSCRIPTION_REQUIRED", "source section", "sourceSection"],
+  ] as const)(
+    "rejects a %s equipment claim without %s",
+    (state, _label, key) => {
+      expect(() =>
+        extractionEnvelopeSchema.parse({
+          ...validExtraction,
+          equipment: {
+            heat_pump: {
+              ...validExtraction.equipment.heat_pump,
+              state,
+              [key]: null,
+            },
+          },
+        }),
+      ).toThrow();
+    },
+  );
+
+  it("accepts UNKNOWN equipment without evidence", () => {
+    const unknownExtraction = {
+      ...validExtraction,
+      equipment: {
+        heat_pump: {
+          ...validExtraction.equipment.heat_pump,
+          state: "UNKNOWN",
+          evidenceText: null,
+          sourceSection: null,
+        },
+      },
+    } as const;
+
+    expect(extractionEnvelopeSchema.parse(unknownExtraction)).toEqual(
+      unknownExtraction,
+    );
+  });
+
+  it("rejects an invalid snapshot SHA-256", () => {
     expect(() =>
       extractionEnvelopeSchema.parse({
         ...validExtraction,
-        fields: {
-          ...validExtraction.fields,
-          [fieldName]: validExtraction.fields.price,
-        },
+        snapshotSha256: "not-a-sha-256",
       }),
     ).toThrow();
   });
 
+  it.each(forbiddenExtractionKeys)(
+    "rejects forbidden top-level %s property %s",
+    (_category, fieldName) => {
+      expect(() =>
+        extractionEnvelopeSchema.parse({
+          ...validExtraction,
+          [fieldName]: "outside-the-extraction-boundary",
+        }),
+      ).toThrow();
+    },
+  );
+
+  it.each(forbiddenExtractionKeys)(
+    "rejects forbidden %s field %s",
+    (_category, fieldName) => {
+      expect(() =>
+        extractionEnvelopeSchema.parse({
+          ...validExtraction,
+          fields: {
+            ...validExtraction.fields,
+            [fieldName]: validExtraction.fields.price,
+          },
+        }),
+      ).toThrow();
+    },
+  );
+
   it("excludes forbidden top-level properties from the TypeScript type", () => {
+    type ForbiddenTopLevelKey = (typeof forbiddenExtractionKeys)[number][1];
+    type ForbiddenTopLevelOverlap = Extract<
+      keyof ExtractionEnvelope,
+      ForbiddenTopLevelKey
+    >;
+
+    expectTypeOf<ForbiddenTopLevelOverlap>().toEqualTypeOf<never>();
+
     const envelope: ExtractionEnvelope = validExtraction;
-    expectTypeOf(envelope).toMatchTypeOf<ExtractionEnvelope>();
+    void envelope;
 
     const withAvailability: ExtractionEnvelope = {
       ...validExtraction,

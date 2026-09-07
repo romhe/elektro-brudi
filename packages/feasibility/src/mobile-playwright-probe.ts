@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { isNativeBrowserIdentity } from "@elektro-brudi/browser";
-// eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { BrowserIdentity } from "@elektro-brudi/browser";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { BrowserSession } from "@elektro-brudi/browser";

@@ -161,7 +161,16 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
       index: ["index.html"],
     });
     app.setNotFoundHandler((request, reply) => {
-      if (request.method !== "GET" && request.method !== "HEAD") {
+      const path = request.url.split("?")[0] ?? "";
+      const looksLikeFile =
+        path.startsWith("/assets/") || /\.[a-z0-9]+$/iu.test(path);
+      if (
+        (request.method !== "GET" && request.method !== "HEAD") ||
+        looksLikeFile
+      ) {
+        // A missing asset must be a 404, never the SPA shell: an outdated
+        // service worker that still references old hashed files would
+        // otherwise receive text/html for a module script.
         return reply.status(404).send(apiError("NOT_FOUND", "Not found"));
       }
       return reply.sendFile("index.html");

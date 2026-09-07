@@ -298,6 +298,14 @@ describe("static PWA", () => {
     expect(route.statusCode).toBe(200);
     expect(route.body).toContain("<title>PWA</title>");
 
+    const asset = await app.inject({
+      method: "GET",
+      url: "/assets/index-old.js",
+    });
+    expect(asset.statusCode).toBe(404);
+    const file = await app.inject({ method: "GET", url: "/missing.png" });
+    expect(file.statusCode).toBe(404);
+
     const api = await app.inject({ method: "GET", url: "/api/nothing" });
     expect(api.statusCode).toBe(404);
     expect(api.json()).toEqual({

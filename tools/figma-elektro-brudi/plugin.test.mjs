@@ -109,3 +109,17 @@ test('focuses the primary desktop screen instead of the full key-screen board', 
   assert.match(pluginSource, /figma\.viewport\.scrollAndZoomIntoView\(\[focusFrame\]\)/);
   assert.doesNotMatch(pluginSource, /figma\.currentPage\.selection = \[screens\]/);
 });
+
+test('lays text out before assigning characters and falls back on zero bounds', () => {
+  const textFunction = pluginSource.slice(
+    pluginSource.indexOf('function text('),
+    pluginSource.indexOf('\nfunction divider('),
+  );
+  assert.ok(
+    textFunction.indexOf("node.textAutoResize = options.width ? 'HEIGHT' : 'WIDTH_AND_HEIGHT'") <
+      textFunction.indexOf('node.characters = characters'),
+    'text auto-resize must be configured before assigning characters',
+  );
+  assert.match(textFunction, /node\.width < 1 \|\| node\.height < 1/);
+  assert.match(textFunction, /context\.fallbackFamily/);
+});

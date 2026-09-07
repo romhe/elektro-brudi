@@ -77,7 +77,7 @@ const GENERATED_ROOTS = [
   '[ElektroBrudi] Key Screens',
 ];
 const BUILD_STATUS_KEY = 'elektro-brudi-build-status';
-const BUILD_COMPLETE = 'v2-complete';
+const BUILD_COMPLETE = 'v3-text-layout-complete';
 
 function rgb(hex) {
   const value = hex.replace('#', '');
@@ -176,18 +176,24 @@ function text(parent, characters, options = {}) {
   const node = figma.createText();
   node.name = options.name || characters.slice(0, 48) || 'Text';
   const weight = options.weight || 400;
+  const size = options.size || 14;
+  const lineHeight = options.lineHeight || Math.round(size * 1.35);
   node.fontName = { family: context.fontFamily, style: context.fonts[fontStyle(weight)] };
-  node.characters = characters;
-  node.fontSize = options.size || 14;
-  node.lineHeight = { unit: 'PIXELS', value: options.lineHeight || Math.round((options.size || 14) * 1.35) };
+  node.fontSize = size;
+  node.lineHeight = { unit: 'PIXELS', value: lineHeight };
   node.letterSpacing = { unit: 'PERCENT', value: options.tracking || 0 };
+  if (options.width) node.resize(options.width, lineHeight);
+  node.textAutoResize = options.width ? 'HEIGHT' : 'WIDTH_AND_HEIGHT';
+  node.characters = characters;
   node.fills = [solid(options.color || C.text)];
   if (options.align) node.textAlignHorizontal = options.align;
-  if (options.width) {
-    node.textAutoResize = 'HEIGHT';
-    node.resize(options.width, Math.max(options.lineHeight || 18, 1));
-  } else {
-    node.textAutoResize = 'WIDTH_AND_HEIGHT';
+  if ((node.width < 1 || node.height < 1) && context.fallbackFamily) {
+    node.fontName = { family: context.fallbackFamily, style: context.fallbackFonts[fontStyle(weight)] };
+    node.characters = '';
+    node.characters = characters;
+  }
+  if (node.width < 1 || node.height < 1) {
+    throw new Error(`Text layout failed for “${characters.slice(0, 32)}”.`);
   }
   append(parent, node);
   return node;
@@ -943,23 +949,42 @@ async function buildKeyScreens(page) {
 
 const context = {
   variables: new Map(),
-  fontFamily: 'SF Pro Display',
+  fontFamily: 'SF Pro Text',
   fonts: { Regular: 'Regular', Medium: 'Medium', Semibold: 'Semibold', Bold: 'Bold' },
+  fallbackFamily: 'Inter',
+  fallbackFonts: { Regular: 'Regular', Medium: 'Medium', Semibold: 'Semi Bold', Bold: 'Bold' },
 };
+
+/** @returns {{Regular: string, Medium: string, Semibold: string, Bold: string}} */
+function resolveFontStyles(available, family) {
+  const familyStyles = available
+    .filter((item) => item.fontName.family === family)
+    .map((item) => item.fontName.style);
+  const normalize = (value) => value.toLowerCase().replace(/ /g, '');
+  const resolved = { Regular: '', Medium: '', Semibold: '', Bold: '' };
+  for (const requested of ['Regular', 'Medium', 'Semibold', 'Bold']) {
+    resolved[requested] = familyStyles.find((style) => normalize(style) === normalize(requested))
+      || familyStyles.find((style) => normalize(style).includes(normalize(requested)))
+      || familyStyles[0];
+  }
+  return resolved;
+}
 
 async function loadContext() {
   const available = await figma.listAvailableFontsAsync();
-  const preferredFamilies = ['SF Pro', 'SF Pro Display', 'SF Pro Text'];
+  const preferredFamilies = ['SF Pro Text', 'SF Pro Display', 'SF Pro'];
   const family = preferredFamilies.find((candidate) => available.some((item) => item.fontName.family === candidate));
   if (!family) throw new Error('SF Pro is required but is not available in this Figma desktop environment.');
   context.fontFamily = family;
-  const familyFonts = available.filter((item) => item.fontName.family === family).map((item) => item.fontName.style);
-  for (const requested of ['Regular', 'Medium', 'Semibold', 'Bold']) {
-    const exact = familyFonts.find((style) => style === requested);
-    const fallback = familyFonts.find((style) => style.toLowerCase().includes(requested.toLowerCase())) || familyFonts[0];
-    context.fonts[requested] = exact || fallback;
-    await figma.loadFontAsync({ family, style: context.fonts[requested] });
+  context.fonts = resolveFontStyles(available, family);
+  context.fallbackFamily = available.some((item) => item.fontName.family === 'Inter') ? 'Inter' : family;
+  context.fallbackFonts = resolveFontStyles(available, context.fallbackFamily);
+  const fontsToLoad = new Map();
+  for (const fontFamily of [context.fontFamily, context.fallbackFamily]) {
+    const styles = fontFamily === context.fontFamily ? context.fonts : context.fallbackFonts;
+    Object.values(styles).forEach((style) => fontsToLoad.set(`${fontFamily}\u0000${style}`, { family: fontFamily, style }));
   }
+  await Promise.all(Array.from(fontsToLoad.values()).map((font) => figma.loadFontAsync(font)));
   const variables = await figma.variables.getLocalVariablesAsync();
   variables.forEach((variable) => context.variables.set(variable.name, variable));
 }

@@ -4,9 +4,9 @@
 
 **Goal:** Build and verify one three-page editable Figma design file containing the visual guidelines, reusable components and states, polished desktop/mobile Overview screens, representative Detail and Settings sections, and a clickable Overview/Import prototype.
 
-**Architecture:** Create the design system before composing screens. Use Figma variables, text/effect styles, Auto Layout, component properties, and variants so desktop and mobile views share semantics without duplicating loose groups. Build and validate the file incrementally with `use_figma`, returning node IDs from every mutation and capturing screenshots after each principal frame.
+**Architecture:** Create the design system before composing screens. Use Figma variables, text/effect styles, Auto Layout, component properties, and variants so desktop and mobile views share semantics without duplicating loose groups. The MCP server created and validated the file, variables, styles, and exact three-page structure. Because the Starter-plan MCP quota was then exhausted, the remaining deterministic canvas construction is delivered as the no-network local development plugin in `tools/figma-elektro-brudi`; final screenshots remain the human verification gate.
 
-**Tech Stack:** Figma Design, Figma Variables, component sets and variants, Auto Layout, Figma prototyping, Figma MCP `create_new_file`, `use_figma`, `get_metadata`, `get_screenshot`, and `download_assets`
+**Tech Stack:** Figma Design, Figma Variables, component sets and variants, Auto Layout, Figma prototyping, Figma MCP, and the Figma Plugin API
 
 ---
 
@@ -22,6 +22,8 @@ Repository artifacts:
 
 - Existing design contract: `docs/plans/2026-09-06-elektro-brudi-ui-design.md`
 - This execution plan: `docs/superpowers/plans/2026-09-06-elektro-brudi-figma-implementation.md`
+- One-shot local builder: `tools/figma-elektro-brudi/manifest.json`, `tools/figma-elektro-brudi/code.js`
+- Builder contract tests and runbook: `tools/figma-elektro-brudi/plugin.test.mjs`, `tools/figma-elektro-brudi/README.md`
 - No generated design image is committed to the repository; immutable PNG previews belong on GitHub issue #18.
 
 ## Naming and content conventions

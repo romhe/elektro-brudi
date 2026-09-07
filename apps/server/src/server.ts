@@ -155,9 +155,11 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
 
   const webDistDir = config.paths.webDistDir;
   if (existsSync(webDistDir)) {
+    // wildcard: true serves files that appear after startup, so a rebuilt
+    // PWA never leaves the server with a stale route table.
     app.register(fastifyStatic, {
       root: webDistDir,
-      wildcard: false,
+      wildcard: true,
       index: ["index.html"],
     });
     app.setNotFoundHandler((request, reply) => {

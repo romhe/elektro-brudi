@@ -104,6 +104,14 @@ test('defines the table-first Overview contract', () => {
   assert.equal(new Set(contract.overviewOffers.map((offer) => offer.order)).size, 7);
 });
 
+test('renders a table and selected-offer inspector on desktop', () => {
+  assert.match(pluginSource, /Overview filters/);
+  assert.match(pluginSource, /Offer comparison table/);
+  assert.match(pluginSource, /SelectedOfferInspector/);
+  assert.match(pluginSource, /Sort indicator/);
+  assert.doesNotMatch(pluginSource, /desktopWinner\(left/);
+});
+
 test('builds real variant sets and clickable prototype reactions', () => {
   assert.match(pluginSource, /figma\.combineAsVariants\(/);
   assert.match(pluginSource, /setReactionsAsync\(/);

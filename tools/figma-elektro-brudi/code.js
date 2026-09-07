@@ -607,11 +607,13 @@ function buildComponents(page) {
     stateStrip(c, [['VERIFIED', 'success'], ['UNVERIFIED', 'warning'], ['UNKNOWN', 'neutral']], 496);
     stateStrip(c, [['OFFLINE', 'error'], ['KEYCHAIN_MISSING', 'error']], 496);
   });
-  documentedComponent(root, 'WinnerCard', 'Antwort-zuerst Karte mit Rang, Score und Begründung.', (c) => {
-    badge(c, 'Beste Wahl', 'success');
-    text(c, 'Hyundai IONIQ 5 · Techniq', { size: 20, weight: 700 });
-    text(c, '84 / 100', { size: 30, weight: 700, color: C.success });
-    text(c, 'Stärkste finanzielle Passung bei vollständig verifizierter Wunschausstattung.', { size: 12, color: C.secondary, width: 470 });
+  documentedComponent(root, 'SelectedOfferInspector', 'Kompakte Details zur gewählten Tabellenzeile ohne Seitenwechsel.', (c) => {
+    const status = auto(c, 'Selection status', 'HORIZONTAL', { width: 496, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
+    badge(status, 'Rang 1', 'success'); badge(status, 'verifiziert', 'success');
+    text(c, 'Hyundai IONIQ 5 · Techniq', { size: 19, weight: 700 });
+    const values = auto(c, 'Decision values', 'HORIZONTAL', { width: 496, gap: 8 });
+    badge(values, '499 € / Monat', 'info'); badge(values, '− 71 € ggü. Golf', 'success');
+    button(c, 'Details öffnen', { kind: 'secondary' });
   });
   documentedComponent(root, 'ReferenceDelta', 'Erklärt die Abweichung zur Referenz statt nur Zahlen zu zeigen.', (c) => {
     const row = auto(c, 'Delta row', 'HORIZONTAL', { width: 496, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
@@ -704,39 +706,133 @@ function buildComponents(page) {
   return root;
 }
 
-function desktopWinner(parent, width) {
-  const winner = card(parent, 'WinnerCard', { width, padding: 20, gap: 10, shadow: true });
-  const header = auto(winner, 'Header', 'HORIZONTAL', { width: width - 40, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
-  badge(header, 'Beste Wahl', 'success'); badge(header, 'Verifiziert verfügbar', 'success');
-  text(winner, 'Hyundai IONIQ 5 · Techniq', { size: 23, weight: 700 });
-  const score = auto(winner, 'Decision', 'HORIZONTAL', { width: width - 40, gap: 20, counterAlign: 'CENTER' });
-  text(score, '84', { size: 46, weight: 700, color: C.success, lineHeight: 50 });
-  const rationale = auto(score, 'Rationale', 'VERTICAL', { width: width - 135, gap: 3 });
-  text(rationale, 'Beste Gesamtpassung', { size: 15, weight: 700 });
-  text(rationale, 'Starke Finanzierung und alle entscheidenden Ausstattungsmerkmale verifiziert.', { size: 12, color: C.secondary, width: width - 145, lineHeight: 17 });
-  const facts = auto(winner, 'Facts', 'HORIZONTAL', { width: width - 40, gap: 8 });
-  badge(facts, '499 € / Monat', 'info'); badge(facts, '36.490 €', 'neutral'); badge(facts, '22.900 km', 'neutral');
-  return winner;
+function overviewSummary(parent, width) {
+  const summary = auto(parent, 'Overview summary', 'HORIZONTAL', {
+    width, height: 56, fill: C.surface, stroke: C.border, radius: 12,
+    paddingLeft: 16, paddingRight: 16, gap: 0, counterAlign: 'CENTER',
+  });
+  const metrics = [
+    ['Angebote', '7'], ['Verifiziert', '4'], ['Prüfung nötig', '2'], ['Aktualisiert', 'vor 2 Min.'],
+  ];
+  metrics.forEach(([label, value], index) => {
+    const item = auto(summary, `Summary · ${label}`, 'HORIZONTAL', { width: index === 3 ? 275 : 165, gap: 8, counterAlign: 'CENTER' });
+    if (index < 3) text(item, value, { size: 19, weight: 700, color: index === 2 ? C.warning : C.text });
+    text(item, label, { size: 11, weight: 600, color: C.secondary });
+    if (index === 3) text(item, value, { size: 12, weight: 600 });
+    if (index < metrics.length - 1) frame(summary, 'Metric divider', { width: 1, height: 26, fill: C.border });
+  });
+  const spacer = frame(summary, 'Summary spacer', { width: 1, height: 1 }); spacer.layoutGrow = 1;
+  badge(summary, 'Rang ↑', 'info');
+  return summary;
+}
+
+function filterControl(parent, label, value, width, search = false) {
+  const control = auto(parent, `Filter · ${label}`, 'HORIZONTAL', {
+    width, height: 36, fill: C.surface, stroke: C.border, radius: 9,
+    paddingLeft: 10, paddingRight: 10, gap: 7, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER',
+  });
+  const copy = auto(control, 'Filter copy', 'HORIZONTAL', { gap: 6, counterAlign: 'CENTER' });
+  if (search) text(copy, '⌕', { size: 14, weight: 600, color: C.secondary });
+  text(copy, value, { size: 11, color: search ? C.secondary : C.text, weight: search ? 400 : 500 });
+  if (!search) text(control, '⌄', { size: 11, color: C.secondary });
+  return control;
+}
+
+function overviewFilters(parent, width) {
+  const filters = auto(parent, 'Overview filters', 'HORIZONTAL', { width, gap: 8, counterAlign: 'CENTER' });
+  filterControl(filters, 'Suche', 'Fahrzeug suchen', 220, true);
+  filterControl(filters, 'Verifikation', 'Verifikation: Alle', 145);
+  filterControl(filters, 'Quelle', 'Quelle: Alle', 118);
+  filterControl(filters, 'Finanzierung', 'Finanzierung: Zulässig', 165);
+  filterControl(filters, 'Ausstattung', 'Ausstattung: Alle', 142);
+  const spacer = frame(filters, 'Filter spacer', { width: 1, height: 1 }); spacer.layoutGrow = 1;
+  button(filters, 'Zurücksetzen', { kind: 'secondary', height: 36 });
+  return filters;
+}
+
+const TABLE_COLUMN_WIDTHS = [40, 142, 82, 66, 64, 70, 68, 64, 58, 40, 68, 34];
+
+function tableCell(parent, value, width, options = {}) {
+  const cell = auto(parent, options.name || `Cell · ${value}`, options.stack ? 'VERTICAL' : 'HORIZONTAL', {
+    width, height: options.height || 54, gap: options.stack ? 1 : 4,
+    primaryAlign: options.stack ? 'CENTER' : (options.align === 'RIGHT' ? 'MAX' : 'MIN'),
+    counterAlign: options.stack ? 'MIN' : 'CENTER',
+  });
+  if (options.badgeTone) {
+    const toneColors = { success: C.success, warning: C.warning, error: C.error, neutral: C.secondary };
+    dot(cell, toneColors[options.badgeTone] || C.secondary, 6);
+    text(cell, value, { size: 9, weight: 600, color: toneColors[options.badgeTone] || C.secondary, width: width - 13 });
+  } else text(cell, value, { size: options.size || 10, weight: options.weight || 500, color: options.color || C.text, width: width - 4, align: options.align });
+  if (options.secondary) text(cell, options.secondary, { size: 9, color: C.secondary, width: width - 4, lineHeight: 12 });
+  return cell;
+}
+
+function sortHeader(parent, label, width, sortable) {
+  const cell = auto(parent, `Column · ${label || 'Action'}`, 'HORIZONTAL', { width, height: 38, gap: 3, counterAlign: 'CENTER' });
+  if (label) text(cell, label, { size: 9, weight: 600, color: C.secondary, width: sortable ? width - 14 : width - 2 });
+  if (sortable) text(cell, label === 'Rang' ? '↑' : '↕', { name: 'Sort indicator', size: 9, weight: 600, color: label === 'Rang' ? C.accent : C.secondary });
 }
 
 function desktopTable(parent, width) {
-  const table = card(parent, 'Offer comparison', { width, padding: 0, gap: 0 });
-  const title = auto(table, 'Table title', 'HORIZONTAL', { width, padding: 16, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
-  text(title, 'Weitere Angebote', { size: 16, weight: 700 }); badge(title, '3 Angebote', 'neutral');
+  const table = card(parent, 'Offer comparison table', { width, padding: 0, gap: 0 });
+  const title = auto(table, 'Table title', 'HORIZONTAL', { width, height: 44, paddingLeft: 12, paddingRight: 12, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
+  text(title, 'Alle Angebote', { size: 15, weight: 700 });
+  const meta = auto(title, 'Table meta', 'HORIZONTAL', { gap: 7, counterAlign: 'CENTER' });
+  badge(meta, '7 Ergebnisse', 'neutral'); badge(meta, 'Sortiert: Rang ↑', 'info');
   divider(table, width);
-  const offers = [
-    ['2', 'Kia EV6 GT-Line', '36.900 € · 24.800 km', '82', 'verifiziert', 'success'],
-    ['3', 'VW ID.4 Pro', '34.750 € · 31.200 km', '76', 'ungeprüft', 'warning'],
-    ['4', 'Tesla Model Y LR', '39.490 € · 18.100 km', '71', 'teilweise', 'warning'],
-  ];
-  offers.forEach(([rank, name, facts, score, status, tone], index) => {
-    const row = auto(table, `OfferRow · ${rank}`, 'HORIZONTAL', { width, height: 62, paddingLeft: 16, paddingRight: 16, gap: 12, counterAlign: 'CENTER' });
-    iconBox(row, rank, { box: 30, fill: C.subtle, color: C.secondary });
-    const copy = auto(row, 'Offer', 'VERTICAL', { width: width - 250, gap: 2 }); text(copy, name, { size: 13, weight: 600 }); text(copy, facts, { size: 11, color: C.secondary });
-    badge(row, status, tone); text(row, score, { size: 20, weight: 700, width: 28, align: 'RIGHT' });
-    if (index < offers.length - 1) divider(table, width);
+  const header = auto(table, 'Table header', 'HORIZONTAL', { width, height: 38, fill: C.subtle, paddingLeft: 8, paddingRight: 8, gap: 0, counterAlign: 'CENTER' });
+  contract.overviewTableColumns.forEach((label, index) => sortHeader(header, label, TABLE_COLUMN_WIDTHS[index], [0, 3, 4, 5, 6, 9, 10].includes(index)));
+  divider(table, width);
+  contract.overviewOffers.forEach((offer, index) => {
+    const row = auto(table, `OfferRow · order ${offer.order}`, 'HORIZONTAL', {
+      width, height: 58, fill: offer.order === 1 ? C.infoBg : C.surface,
+      paddingLeft: 8, paddingRight: 8, gap: 0, counterAlign: 'CENTER',
+    });
+    tableCell(row, String(offer.order), TABLE_COLUMN_WIDTHS[0], { size: 12, weight: 700, color: offer.order === 1 ? C.accent : C.secondary });
+    tableCell(row, offer.vehicle, TABLE_COLUMN_WIDTHS[1], { stack: true, secondary: offer.source, size: 10, weight: 600 });
+    tableCell(row, offer.verification, TABLE_COLUMN_WIDTHS[2], { badgeTone: offer.verificationTone });
+    tableCell(row, offer.price, TABLE_COLUMN_WIDTHS[3], { align: 'RIGHT' });
+    tableCell(row, offer.mileage, TABLE_COLUMN_WIDTHS[4], { align: 'RIGHT', size: 9 });
+    tableCell(row, offer.monthly, TABLE_COLUMN_WIDTHS[5], { align: 'RIGHT', weight: 700 });
+    tableCell(row, offer.golfDelta, TABLE_COLUMN_WIDTHS[6], { align: 'RIGHT', color: C.success, weight: 700 });
+    tableCell(row, offer.finance, TABLE_COLUMN_WIDTHS[7], { badgeTone: offer.financeTone });
+    tableCell(row, offer.equipment, TABLE_COLUMN_WIDTHS[8], { align: 'RIGHT' });
+    tableCell(row, offer.score, TABLE_COLUMN_WIDTHS[9], { align: 'RIGHT', size: 14, weight: 700 });
+    tableCell(row, offer.updated, TABLE_COLUMN_WIDTHS[10], { size: 9, color: C.secondary });
+    const action = auto(row, 'Row action', 'HORIZONTAL', { width: TABLE_COLUMN_WIDTHS[11], height: 54, primaryAlign: 'CENTER', counterAlign: 'CENTER' });
+    text(action, '›', { size: 17, weight: 600, color: C.accent });
+    if (index < contract.overviewOffers.length - 1) divider(table, width);
   });
   return table;
+}
+
+function selectedOfferInspector(parent, width, offer) {
+  const inspector = card(parent, 'SelectedOfferInspector', { width, padding: 16, gap: 12, shadow: true });
+  const heading = auto(inspector, 'Inspector heading', 'HORIZONTAL', { width: width - 32, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
+  text(heading, 'Ausgewähltes Angebot', { size: 11, weight: 600, color: C.secondary });
+  badge(heading, `Rang ${offer.order}`, 'success');
+  text(inspector, offer.vehicle, { size: 18, weight: 700, width: width - 32, lineHeight: 23 });
+  const statuses = auto(inspector, 'Inspector statuses', 'HORIZONTAL', { width: width - 32, gap: 6 });
+  badge(statuses, offer.verification, offer.verificationTone); badge(statuses, offer.finance, offer.financeTone);
+  divider(inspector, width - 32);
+  [['Kaufpreis', offer.price], ['Effektiv / Monat', offer.monthly], ['Gegen Golf', `${offer.golfDelta} / Monat`]].forEach(([label, value]) => {
+    const row = auto(inspector, `Inspector · ${label}`, 'HORIZONTAL', { width: width - 32, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
+    text(row, label, { size: 11, color: C.secondary });
+    text(row, value, { size: 13, weight: 700, color: label === 'Gegen Golf' ? C.success : C.text });
+  });
+  divider(inspector, width - 32);
+  text(inspector, 'Bewertung', { size: 13, weight: 700 });
+  const scoreRow = auto(inspector, 'Score split', 'HORIZONTAL', { width: width - 32, gap: 8 });
+  metric(scoreRow, 'Finanzierung · 70%', '59 / 70', 'Rate & Gesamtkosten', 139);
+  metric(scoreRow, 'Ausstattung · 30%', '25 / 30', 'verifizierte Merkmale', 139);
+  text(inspector, 'Ausstattung', { size: 13, weight: 700 });
+  [['Wärmepumpe', 'vorhanden'], ['Matrix-LED', 'vorhanden'], ['Anhängerkupplung', 'ungeprüft']].forEach(([label, value], index) => {
+    const row = auto(inspector, `Equipment · ${label}`, 'HORIZONTAL', { width: width - 32, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
+    text(row, label, { size: 11 }); badge(row, value, index === 2 ? 'warning' : 'success');
+  });
+  callout(inspector, 'Zuletzt aktualisiert', `${offer.updated} · ${offer.source}`, 'info', width - 32);
+  const details = button(inspector, 'Details öffnen', { height: 40 }); details.resize(width - 32, 40);
+  return inspector;
 }
 
 function buildOverviewDesktop(page, x, y) {
@@ -745,36 +841,20 @@ function buildOverviewDesktop(page, x, y) {
   });
   buildSidebar(screen, 'Übersicht', 1024, false);
   const workspace = auto(screen, 'Workspace', 'VERTICAL', { width: 1208, height: 1024, fill: C.app, gap: 0 });
-  topNav(workspace, 'Kaufentscheidung', '4 Angebote · Auswertung abgeschlossen', 1208);
-  const content = auto(workspace, 'Content', 'VERTICAL', { width: 1208, height: 960, padding: 28, gap: 18 });
-  const heading = auto(content, 'Heading', 'HORIZONTAL', { width: 1152, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
+  topNav(workspace, 'Angebotsübersicht', '7 Angebote · Auswertung abgeschlossen', 1208);
+  const content = auto(workspace, 'Content', 'VERTICAL', { width: 1208, height: 960, padding: 24, gap: 12 });
+  const heading = auto(content, 'Heading', 'HORIZONTAL', { width: 1160, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
   const copy = auto(heading, 'Copy', 'VERTICAL', { gap: 4 });
-  text(copy, 'Deine beste Wahl', { size: 28, weight: 700 });
-  text(copy, 'Budget 550 € / Monat · Ausstattung gewichtet', { size: 13, color: C.secondary });
-  button(heading, 'Angebot hinzufügen', { icon: '＋' });
-  const importer = auto(content, 'URLImport', 'HORIZONTAL', { width: 1152, fill: C.surface, stroke: C.border, radius: 12, padding: 12, gap: 10, counterAlign: 'MAX' });
-  inputField(importer, 'Neues Angebot importieren', 'https://suchen.mobile.de/fahrzeuge/details.html?id=…', 'default', 900);
-  button(importer, 'Importieren', { height: 40 });
-  const columns = auto(content, 'Decision grid', 'HORIZONTAL', { width: 1152, gap: 18, counterAlign: 'MIN' });
-  const left = auto(columns, 'Primary column', 'VERTICAL', { width: 750, gap: 14 });
-  desktopWinner(left, 750);
-  desktopTable(left, 750);
-  const right = auto(columns, 'Insight rail', 'VERTICAL', { width: 384, gap: 14 });
-  const score = card(right, 'ScoreBreakdown', { width: 384, padding: 18, gap: 12 });
-  text(score, 'Warum dieses Angebot?', { size: 16, weight: 700 });
-  const finance = auto(score, 'Finance score', 'VERTICAL', { width: 348, gap: 5 });
-  const fr = auto(finance, 'Header', 'HORIZONTAL', { width: 348, primaryAlign: 'SPACE_BETWEEN' }); text(fr, 'Finanzierung · 70%', { size: 12, weight: 600 }); text(fr, '59 / 70', { size: 12, weight: 700 });
-  frame(finance, 'Track', { width: 348, height: 8, fill: C.subtle, radius: 4 }); const ff = frame(finance, 'Value', { width: 293, height: 8, fill: C.accent, radius: 4 }); ff.y = 22;
-  const equipment = auto(score, 'Equipment score', 'VERTICAL', { width: 348, gap: 5 });
-  const er = auto(equipment, 'Header', 'HORIZONTAL', { width: 348, primaryAlign: 'SPACE_BETWEEN' }); text(er, 'Ausstattung · 30%', { size: 12, weight: 600 }); text(er, '25 / 30', { size: 12, weight: 700 });
-  frame(equipment, 'Track', { width: 348, height: 8, fill: C.subtle, radius: 4 });
-  callout(right, '1 Merkmal ungeprüft', 'Die Anhängerkupplung wurde entdeckt, aber nicht in einer Primärquelle bestätigt.', 'warning', 384);
-  const evidence = card(right, 'Evidence summary', { width: 384, padding: 18, gap: 10 });
-  text(evidence, 'Ausstattungsbelege', { size: 16, weight: 700 });
-  [['Wärmepumpe', 'success'], ['Matrix-LED', 'success'], ['Anhängerkupplung', 'warning']].forEach(([label, tone]) => {
-    const row = auto(evidence, label, 'HORIZONTAL', { width: 348, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
-    text(row, label, { size: 12, weight: 500 }); badge(row, tone === 'success' ? 'verifiziert' : 'ungeprüft', tone);
-  });
+  text(copy, 'Alle Angebote', { size: 27, weight: 700 });
+  text(copy, 'Vergleichen, sortieren und auswählen — Rang bleibt unabhängig von der Sortierung.', { size: 12, color: C.secondary });
+  const actions = auto(heading, 'Header actions', 'HORIZONTAL', { gap: 8, counterAlign: 'CENTER' });
+  button(actions, 'Alle aktualisieren', { kind: 'secondary', icon: '↻' });
+  button(actions, 'Angebot hinzufügen', { icon: '＋' });
+  overviewSummary(content, 1160);
+  overviewFilters(content, 1160);
+  const columns = auto(content, 'Comparison workspace', 'HORIZONTAL', { width: 1160, gap: 14, counterAlign: 'MIN' });
+  desktopTable(columns, 820);
+  selectedOfferInspector(columns, 326, contract.overviewOffers[0]);
   bindSemanticTokens(screen);
   return screen;
 }

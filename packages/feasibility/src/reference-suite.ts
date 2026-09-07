@@ -117,6 +117,8 @@ const monthlyPriceQualifier =
   /(?:monat|monatl|rate|leasing|finanzier|pro\s+monat|\/\s*monat)/iu;
 const purchasePriceQualifier =
   /(?:kaufpreis|barpreis|fahrzeugpreis|gesamtpreis|verkaufspreis)/iu;
+const nonPurchasePriceQualifier =
+  /(?:ehem(?:alig)?|empfohlen|\bUPE\b|listenpreis|ersparnis|\bsparen\b|anzahlung|kreditbetrag|schlussrate)/iu;
 
 interface EvidenceLine {
   readonly text: string;
@@ -179,35 +181,41 @@ function extractEquipmentClaim(
   };
 }
 
-function parseEuroAmount(text: string): number | null {
-  const suffixMatch =
-    /(?<amount>\d{1,3}(?:[.\s]\d{3})+|\d{4,6})(?:,\d{2})?\s*(?:€|EUR)/iu.exec(
-      text,
-    );
-  const prefixMatch =
-    /(?:€|EUR)\s*(?<amount>\d{1,3}(?:[.\s]\d{3})+|\d{4,6})(?:,\d{2})?/iu.exec(
-      text,
-    );
-  const amount = suffixMatch?.groups?.amount ?? prefixMatch?.groups?.amount;
-  if (!amount) {
-    return null;
-  }
+function parseEuroAmounts(text: string): number[] {
+  const suffixMatches = text.matchAll(
+    /(?<amount>\d{1,3}(?:[.\s]\d{3})+|\d{4,6})(?:,\d{2})?\s*(?:€|EUR)/giu,
+  );
+  const prefixMatches = text.matchAll(
+    /(?:€|EUR)\s*(?<amount>\d{1,3}(?:[.\s]\d{3})+|\d{4,6})(?:,\d{2})?/giu,
+  );
 
-  const parsed = Number.parseInt(amount.replace(/[.\s]/gu, ""), 10);
-  return parsed >= 5_000 && parsed <= 500_000 ? parsed : null;
+  return [...suffixMatches, ...prefixMatches]
+    .map((match) => match.groups?.amount)
+    .filter((amount): amount is string => amount !== undefined)
+    .map((amount) => Number.parseInt(amount.replace(/[.\s]/gu, ""), 10))
+    .filter((amount) => amount >= 5_000 && amount <= 500_000);
 }
 
 function extractPrice(lines: readonly EvidenceLine[]) {
   const candidates = lines
-    .filter(({ text }) => !monthlyPriceQualifier.test(text))
-    .map((line) => ({ ...line, value: parseEuroAmount(line.text) }))
     .filter(
-      (candidate): candidate is EvidenceLine & { value: number } =>
-        candidate.value !== null,
+      ({ text }) =>
+        !monthlyPriceQualifier.test(text) &&
+        !nonPurchasePriceQualifier.test(text),
+    )
+    .map((line) => ({
+      ...line,
+      value: Math.min(...parseEuroAmounts(line.text)),
+    }))
+    .filter((candidate): candidate is EvidenceLine & { value: number } =>
+      Number.isFinite(candidate.value),
     );
   const candidate =
-    candidates.find(({ text }) => purchasePriceQualifier.test(text)) ??
-    candidates[0];
+    candidates.find(
+      ({ text, section }) =>
+        purchasePriceQualifier.test(text) ||
+        purchasePriceQualifier.test(section),
+    ) ?? candidates[0];
 
   if (!candidate) {
     return undefined;
@@ -303,11 +311,25 @@ export function buildProofReport(
     const extraction = transport.markdown
       ? extractSnapshot(transport.markdown)
       : null;
+    const hasOfferData =
+      extraction !== null &&
+      (extraction.fields.price?.value !== undefined ||
+        Object.values(extraction.equipment).some(
+          ({ state }) => state !== "UNKNOWN",
+        ));
+    const outcome =
+      transport.outcome === "FETCHED" && !hasOfferData
+        ? "PARTIAL"
+        : transport.outcome;
+    const error =
+      transport.outcome === "FETCHED" && !hasOfferData
+        ? "Crawl returned Markdown but no target offer data was extracted"
+        : transport.error;
 
     return {
       sourceId: transport.sourceId,
       requestedUrl: transport.requestedUrl,
-      outcome: transport.outcome,
+      outcome,
       apiStatus: transport.apiStatus,
       httpStatus: transport.httpStatus,
       finalUrl: transport.finalUrl,
@@ -317,7 +339,7 @@ export function buildProofReport(
         : null,
       contentSha256: extraction?.snapshotSha256 ?? null,
       extraction,
-      error: transport.error,
+      error,
     };
   });
 

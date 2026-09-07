@@ -111,6 +111,22 @@ Anhängerkupplung schwenkbar
       ),
     ).toBe(true);
   });
+
+  it("prefers a discounted purchase price over former list price evidence", () => {
+    const markdown = `## Kaufpreis
+40.820 €23.880 €
+Sie sparen 16.940 €
+
+## Weitere Informationen
+Ehem. empfohlener Verkaufspreis (UPE) 40.820 EUR
+`;
+
+    const price = extractSnapshot(markdown).fields.price;
+
+    expect(price?.value).toBe(23_880);
+    expect(price?.evidenceText).toBe("40.820 €23.880 €");
+    expect(price?.sourceSection).toBe("Kaufpreis");
+  });
 });
 
 describe("buildProofReport", () => {
@@ -187,5 +203,31 @@ describe("buildProofReport", () => {
     );
     expect(report.results[1]?.extraction).toBeNull();
     expect(JSON.stringify(report)).not.toContain(markdown);
+  });
+
+  it("marks a fetched shell without offer data as partial", () => {
+    const report = buildProofReport(
+      "0.9.3",
+      [
+        {
+          sourceId: "shell",
+          requestedUrl: "https://manufacturer.example/car",
+          outcome: "FETCHED",
+          apiStatus: 200,
+          httpStatus: 200,
+          finalUrl: "https://manufacturer.example/car",
+          durationMs: 100,
+          markdown: "# Navigation\nModelle\nService\nImpressum",
+          error: null,
+        },
+      ],
+      "2026-09-07T15:00:00.000Z",
+    );
+
+    expect(report.results[0]).toMatchObject({
+      outcome: "PARTIAL",
+      error: "Crawl returned Markdown but no target offer data was extracted",
+    });
+    expect(report.summary).toMatchObject({ fetched: 0, partial: 1, failed: 0 });
   });
 });

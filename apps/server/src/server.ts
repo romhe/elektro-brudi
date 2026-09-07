@@ -2,10 +2,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import fastifyStatic from "@fastify/static";
 import fastify from "fastify";
-import type { FastifyInstance, FastifyServerOptions } from "fastify";
+// eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
+import type { FastifyInstance } from "fastify";
+import type { FastifyServerOptions } from "fastify";
 import { z } from "zod";
 import type { BrowserDescription } from "@elektro-brudi/browser";
-// eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { BrowserSession } from "@elektro-brudi/browser";
 import {
   captureRepository,

@@ -95,7 +95,7 @@ test("runtime chain: health, SQLite, bundled Chromium capture, restart persisten
       await (await fetch(`${second.baseUrl}/api/records`)).json()
     ).records;
     expect(records.map((entry: { id: string }) => entry.id)).toContain(
-      recordId,
+      proof.recordId,
     );
     const captures = (
       await (await fetch(`${second.baseUrl}/api/captures`)).json()

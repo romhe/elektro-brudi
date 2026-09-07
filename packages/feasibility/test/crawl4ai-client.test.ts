@@ -2,19 +2,17 @@ import { describe, expect, it, vi } from "vitest";
 import {
   crawlReferenceSources,
   readCrawl4AIToken,
-  type SecurityRunner,
 } from "../src/crawl4ai-client.js";
-import type { ReferenceSource } from "../src/reference-suite.js";
 
 const sources = [
   { id: "one", url: "https://dealer.example/one" },
   { id: "two", url: "https://dealer.example/two" },
   { id: "three", url: "https://dealer.example/three" },
-] as const satisfies readonly ReferenceSource[];
+] as const;
 
 describe("readCrawl4AIToken", () => {
   it("uses the fixed Keychain executable and argument array", async () => {
-    const runner: SecurityRunner = vi.fn(async () => " secret-value\n");
+    const runner = vi.fn(async () => " secret-value\n");
 
     await expect(readCrawl4AIToken(runner)).resolves.toBe("secret-value");
     expect(runner).toHaveBeenCalledWith("/usr/bin/security", [

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
+  buildProofReport,
   equipmentIds,
   extractSnapshot,
   referenceSources,
@@ -109,5 +110,82 @@ Anhängerkupplung schwenkbar
           sourceSection === null,
       ),
     ).toBe(true);
+  });
+});
+
+describe("buildProofReport", () => {
+  it("keeps every outcome while omitting complete snapshot content", () => {
+    const markdown =
+      "## Fahrzeugpreis\nKaufpreis 29.990 EUR\n## Ausstattung\nACC\n";
+    const transports = [
+      {
+        sourceId: "one",
+        requestedUrl: "https://dealer.example/one",
+        outcome: "FETCHED",
+        apiStatus: 200,
+        httpStatus: 200,
+        finalUrl: "https://dealer.example/one",
+        durationMs: 125,
+        markdown,
+        error: null,
+      },
+      {
+        sourceId: "two",
+        requestedUrl: "https://dealer.example/two",
+        outcome: "FETCH_FAILED",
+        apiStatus: 200,
+        httpStatus: 403,
+        finalUrl: "https://dealer.example/two",
+        durationMs: 250,
+        markdown: null,
+        error: "Blocked by target",
+      },
+      {
+        sourceId: "three",
+        requestedUrl: "https://dealer.example/three",
+        outcome: "PARTIAL",
+        apiStatus: 200,
+        httpStatus: 200,
+        finalUrl: "https://dealer.example/three",
+        durationMs: 75,
+        markdown: null,
+        error: "Crawl succeeded without usable Markdown",
+      },
+    ] as const;
+
+    const report = buildProofReport(
+      "0.9.3",
+      transports,
+      "2026-09-07T15:00:00.000Z",
+    );
+
+    expect(report.generatedAt).toBe("2026-09-07T15:00:00.000Z");
+    expect(report.crawl4ai.version).toBe("0.9.3");
+    expect(report.summary).toEqual({
+      total: 3,
+      fetched: 1,
+      partial: 1,
+      failed: 1,
+      withPrice: 1,
+      presentEquipmentClaims: 1,
+    });
+    expect(
+      report.results.map(({ sourceId, outcome }) => [sourceId, outcome]),
+    ).toEqual([
+      ["one", "FETCHED"],
+      ["two", "FETCH_FAILED"],
+      ["three", "PARTIAL"],
+    ]);
+    expect(report.results[0]?.contentBytes).toBe(Buffer.byteLength(markdown));
+    expect(report.results[0]?.contentSha256).toBe(
+      createHash("sha256").update(markdown).digest("hex"),
+    );
+    expect(report.results[0]?.extraction?.fields.price?.value).toBe(29_990);
+    expect(report.results[0]?.extraction?.equipment).toHaveProperty(
+      "adaptive_cruise_control.state",
+      "PRESENT",
+    );
+    expect(report.results[1]?.extraction).toBeNull();
+    expect(JSON.stringify(report)).not.toContain(markdown);
   });
 });

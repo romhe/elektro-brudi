@@ -2,10 +2,8 @@ import { createHash } from "node:crypto";
 import {
   EXTRACTION_SCHEMA_VERSION,
   extractionEnvelopeSchema,
-  type EquipmentClaim,
-  type EquipmentState,
-  type ExtractionEnvelope,
 } from "@elektro-brudi/contracts";
+import { CRAWL4AI_BASE_URL } from "./crawl4ai-client.js";
 
 export interface ReferenceSource {
   readonly id: string;
@@ -49,6 +47,16 @@ export const equipmentIds = [
 ] as const;
 
 export type EquipmentId = (typeof equipmentIds)[number];
+
+type EquipmentState =
+  "PRESENT" | "ABSENT" | "UNKNOWN" | "PREPARED_ONLY" | "SUBSCRIPTION_REQUIRED";
+
+interface EquipmentClaim {
+  readonly state: EquipmentState;
+  readonly evidenceText: string | null;
+  readonly sourceSection: string | null;
+  readonly confidence: number;
+}
 
 const equipmentAliases: Record<EquipmentId, readonly RegExp[]> = {
   adaptive_cruise_control: [
@@ -213,7 +221,7 @@ function extractPrice(lines: readonly EvidenceLine[]) {
   } as const;
 }
 
-export function extractSnapshot(markdown: string): ExtractionEnvelope {
+export function extractSnapshot(markdown: string) {
   const lines = collectEvidenceLines(markdown);
   const price = extractPrice(lines);
   const equipment = Object.fromEntries(
@@ -240,4 +248,101 @@ export function extractSnapshot(markdown: string): ExtractionEnvelope {
           },
         ],
   });
+}
+
+export interface ProofSourceResult {
+  readonly sourceId: string;
+  readonly requestedUrl: string;
+  readonly outcome: "FETCHED" | "PARTIAL" | "FETCH_FAILED";
+  readonly apiStatus: number | null;
+  readonly httpStatus: number | null;
+  readonly finalUrl: string | null;
+  readonly durationMs: number;
+  readonly contentBytes: number | null;
+  readonly contentSha256: string | null;
+  readonly extraction: ReturnType<typeof extractSnapshot> | null;
+  readonly error: string | null;
+}
+
+interface ProofTransportInput {
+  readonly sourceId: string;
+  readonly requestedUrl: string;
+  readonly outcome: "FETCHED" | "PARTIAL" | "FETCH_FAILED";
+  readonly apiStatus: number | null;
+  readonly httpStatus: number | null;
+  readonly finalUrl: string | null;
+  readonly durationMs: number;
+  readonly markdown: string | null;
+  readonly error: string | null;
+}
+
+export interface ProofReport {
+  readonly reportVersion: "1.0.0";
+  readonly generatedAt: string;
+  readonly crawl4ai: {
+    readonly baseUrl: string;
+    readonly version: string | null;
+  };
+  readonly summary: {
+    readonly total: number;
+    readonly fetched: number;
+    readonly partial: number;
+    readonly failed: number;
+    readonly withPrice: number;
+    readonly presentEquipmentClaims: number;
+  };
+  readonly results: readonly ProofSourceResult[];
+}
+
+export function buildProofReport(
+  version: string | null,
+  transports: readonly ProofTransportInput[],
+  generatedAt: string = new Date().toISOString(),
+): ProofReport {
+  const results = transports.map((transport): ProofSourceResult => {
+    const extraction = transport.markdown
+      ? extractSnapshot(transport.markdown)
+      : null;
+
+    return {
+      sourceId: transport.sourceId,
+      requestedUrl: transport.requestedUrl,
+      outcome: transport.outcome,
+      apiStatus: transport.apiStatus,
+      httpStatus: transport.httpStatus,
+      finalUrl: transport.finalUrl,
+      durationMs: transport.durationMs,
+      contentBytes: transport.markdown
+        ? Buffer.byteLength(transport.markdown, "utf8")
+        : null,
+      contentSha256: extraction?.snapshotSha256 ?? null,
+      extraction,
+      error: transport.error,
+    };
+  });
+
+  return {
+    reportVersion: "1.0.0",
+    generatedAt,
+    crawl4ai: { baseUrl: CRAWL4AI_BASE_URL, version },
+    summary: {
+      total: results.length,
+      fetched: results.filter(({ outcome }) => outcome === "FETCHED").length,
+      partial: results.filter(({ outcome }) => outcome === "PARTIAL").length,
+      failed: results.filter(({ outcome }) => outcome === "FETCH_FAILED")
+        .length,
+      withPrice: results.filter(
+        ({ extraction }) => extraction?.fields.price?.value !== undefined,
+      ).length,
+      presentEquipmentClaims: results.reduce(
+        (total, { extraction }) =>
+          total +
+          Object.values(extraction?.equipment ?? {}).filter(
+            ({ state }) => state === "PRESENT",
+          ).length,
+        0,
+      ),
+    },
+    results,
+  };
 }

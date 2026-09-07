@@ -1,5 +1,4 @@
 import { execFile } from "node:child_process";
-import type { ReferenceSource } from "./reference-suite.js";
 
 export const CRAWL4AI_BASE_URL = "https://crawl4ai.locl.be";
 
@@ -35,6 +34,11 @@ export interface CrawlSuiteTransportResult {
   readonly version: string | null;
   readonly results: readonly SourceTransportResult[];
   readonly suiteFailure: boolean;
+}
+
+interface CrawlSource {
+  readonly id: string;
+  readonly url: string;
 }
 
 const defaultSecurityRunner: SecurityRunner = (executable, arguments_) =>
@@ -119,7 +123,7 @@ async function readVersion(
 }
 
 async function crawlSource(
-  source: ReferenceSource,
+  source: CrawlSource,
   baseUrl: string,
   token: string,
   fetchImplementation: typeof fetch,
@@ -219,7 +223,7 @@ async function crawlSource(
 }
 
 export async function crawlReferenceSources(options: {
-  readonly sources: readonly ReferenceSource[];
+  readonly sources: readonly CrawlSource[];
   readonly token: string;
   readonly baseUrl?: string;
   readonly fetchImplementation?: typeof fetch;

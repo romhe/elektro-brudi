@@ -76,6 +76,8 @@ const GENERATED_ROOTS = [
   '[ElektroBrudi] Components & States',
   '[ElektroBrudi] Key Screens',
 ];
+const BUILD_STATUS_KEY = 'elektro-brudi-build-status';
+const BUILD_COMPLETE = 'v2-complete';
 
 function rgb(hex) {
   const value = hex.replace('#', '');
@@ -729,7 +731,7 @@ function buildOverviewDesktop(page, x, y) {
   text(copy, 'Deine beste Wahl', { size: 28, weight: 700 });
   text(copy, 'Budget 550 € / Monat · Ausstattung gewichtet', { size: 13, color: C.secondary });
   button(heading, 'Angebot hinzufügen', { icon: '＋' });
-  const importer = auto(content, 'URLImport', 'HORIZONTAL', { width: 1152, fill: C.surface, stroke: C.border, radius: 12, padding: 12, gap: 10, counterAlign: 'END' });
+  const importer = auto(content, 'URLImport', 'HORIZONTAL', { width: 1152, fill: C.surface, stroke: C.border, radius: 12, padding: 12, gap: 10, counterAlign: 'MAX' });
   inputField(importer, 'Neues Angebot importieren', 'https://suchen.mobile.de/fahrzeuge/details.html?id=…', 'default', 900);
   button(importer, 'Importieren', { height: 40 });
   const columns = auto(content, 'Decision grid', 'HORIZONTAL', { width: 1152, gap: 18, counterAlign: 'MIN' });
@@ -971,28 +973,53 @@ async function findPages() {
   return contract.pages.map((name) => /** @type {PageNode} */ (pages.get(name)));
 }
 
-function assertCleanTargets(pages) {
-  const existing = [];
+function cleanupIncompleteGeneratedRoots(pages) {
+  const incomplete = [];
   pages.forEach((page) => {
     page.children.forEach((node) => {
-      if (GENERATED_ROOTS.includes(node.name)) existing.push(`${page.name} / ${node.name}`);
+      if (GENERATED_ROOTS.includes(node.name) && node.getPluginData(BUILD_STATUS_KEY) !== BUILD_COMPLETE) {
+        incomplete.push(node);
+      }
     });
   });
-  if (existing.length) {
-    throw new Error(`Generated content already exists. Nothing was changed. Existing root(s): ${existing.join(', ')}`);
+  incomplete.forEach((node) => node.remove());
+  return incomplete.length;
+}
+
+function prepareGeneratedTargets(pages) {
+  const complete = [];
+  pages.forEach((page) => {
+    page.children.forEach((node) => {
+      if (GENERATED_ROOTS.includes(node.name) && node.getPluginData(BUILD_STATUS_KEY) === BUILD_COMPLETE) {
+        complete.push(`${page.name} / ${node.name}`);
+      }
+    });
+  });
+  cleanupIncompleteGeneratedRoots(pages);
+  if (complete.length) {
+    throw new Error(`Generated content is already complete. Nothing was changed. Existing root(s): ${complete.join(', ')}`);
   }
 }
 
 async function build() {
   const pages = await findPages();
-  assertCleanTargets(pages);
+  prepareGeneratedTargets(pages);
   await loadContext();
-  await figma.setCurrentPageAsync(pages[0]);
-  const foundations = buildFoundations(pages[0]);
-  await figma.setCurrentPageAsync(pages[1]);
-  const components = buildComponents(pages[1]);
-  await figma.setCurrentPageAsync(pages[2]);
-  const screens = await buildKeyScreens(pages[2]);
+  let foundations;
+  let components;
+  let screens;
+  try {
+    await figma.setCurrentPageAsync(pages[0]);
+    foundations = buildFoundations(pages[0]);
+    await figma.setCurrentPageAsync(pages[1]);
+    components = buildComponents(pages[1]);
+    await figma.setCurrentPageAsync(pages[2]);
+    screens = await buildKeyScreens(pages[2]);
+    [foundations, components, screens].forEach((root) => root.setPluginData(BUILD_STATUS_KEY, BUILD_COMPLETE));
+  } catch (error) {
+    cleanupIncompleteGeneratedRoots(pages);
+    throw error;
+  }
   figma.currentPage.selection = [screens];
   figma.viewport.scrollAndZoomIntoView([screens]);
   figma.notify('ElektroBrudi: 3 pages, component language, key screens and prototype created.', { timeout: 5000 });

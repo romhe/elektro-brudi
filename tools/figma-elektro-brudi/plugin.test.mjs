@@ -92,8 +92,13 @@ test('builds real variant sets and clickable prototype reactions', () => {
   assert.match(pluginSource, /Overview Import · Prototype states/);
 });
 
-test('stops instead of overwriting generated roots', () => {
-  assert.match(pluginSource, /assertCleanTargets\(pages\)/);
-  assert.match(pluginSource, /Generated content already exists\. Nothing was changed\./);
-  assert.doesNotMatch(pluginSource, /\.remove\(\)/);
+test('uses valid Figma auto-layout alignment values', () => {
+  assert.doesNotMatch(pluginSource, /counterAlign:\s*['"]END['"]/);
+});
+
+test('preserves complete output but cleans incomplete generated roots', () => {
+  assert.match(pluginSource, /prepareGeneratedTargets\(pages\)/);
+  assert.match(pluginSource, /cleanupIncompleteGeneratedRoots\(pages\)/);
+  assert.match(pluginSource, /Generated content is already complete\. Nothing was changed\./);
+  assert.match(pluginSource, /node\.getPluginData\(BUILD_STATUS_KEY\) !== BUILD_COMPLETE/);
 });

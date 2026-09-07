@@ -4,8 +4,51 @@ import {
   MOBILE_REFERENCE_URL,
   buildMobileProbeFailure,
   classifyMobileSnapshot,
+  isNativeBrowserIdentity,
   runMobilePlaywrightProbe,
 } from "../src/mobile-playwright-probe.js";
+
+describe("isNativeBrowserIdentity", () => {
+  it("accepts the identity emitted by directly launched Chromium", () => {
+    expect(
+      isNativeBrowserIdentity({
+        browserVersion: "151.0.7922.173",
+        userAgent:
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+          "AppleWebKit/537.36 (KHTML, like Gecko) " +
+          "Chrome/151.0.0.0 Safari/537.36",
+        platform: "MacIntel",
+        vendor: "Google Inc.",
+        language: "en-GB",
+        languages: ["en-GB"],
+        webdriver: false,
+        brands: ["Not=A?Brand", "Google Chrome", "Chromium"],
+        mobile: false,
+        uaPlatform: "macOS",
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects Playwright-owned headless Chromium identity", () => {
+    expect(
+      isNativeBrowserIdentity({
+        browserVersion: "143.0.7499.4",
+        userAgent:
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+          "AppleWebKit/537.36 (KHTML, like Gecko) " +
+          "HeadlessChrome/143.0.0.0 Safari/537.36",
+        platform: "MacIntel",
+        vendor: "Google Inc.",
+        language: "en-GB",
+        languages: ["en-GB"],
+        webdriver: true,
+        brands: ["Chromium", "Not A(Brand"],
+        mobile: false,
+        uaPlatform: "macOS",
+      }),
+    ).toBe(false);
+  });
+});
 
 describe("classifyMobileSnapshot", () => {
   it("classifies the rendered mobile.de denial page as blocked", () => {
@@ -99,10 +142,23 @@ describe("buildMobileProbeFailure", () => {
 
 describe("runMobilePlaywrightProbe", () => {
   it("navigates the fixed URL and classifies the rendered result", async () => {
+    const identity = {
+      browserVersion: "151.0.7922.173",
+      userAgent: "Chrome/151.0.0.0",
+      platform: "MacIntel",
+      vendor: "Google Inc.",
+      language: "en-GB",
+      languages: ["en-GB"],
+      webdriver: false,
+      brands: ["Google Chrome", "Chromium"],
+      mobile: false,
+      uaPlatform: "macOS",
+    } as const;
     const session = {
       navigate: vi.fn(async () => ({ httpStatus: 200 })),
       title: vi.fn(async () => "VW ID.4"),
       bodyText: vi.fn(async () => "Kaufpreis 29.990 EUR\nApple CarPlay"),
+      identity: vi.fn(async () => identity),
       finalUrl: vi.fn(() => MOBILE_REFERENCE_URL),
       close: vi.fn(async () => undefined),
     };
@@ -114,6 +170,8 @@ describe("runMobilePlaywrightProbe", () => {
     expect(session.close).toHaveBeenCalledOnce();
     expect(result.durationMs).toBe(340);
     expect(result.outcome).toBe("FETCHED");
+    expect(result.browserIdentity).toEqual(identity);
+    expect(result.nativeIdentityPreserved).toBe(true);
     expect(result.extraction?.equipment.carplay_android_auto?.state).toBe(
       "PRESENT",
     );
@@ -126,6 +184,9 @@ describe("runMobilePlaywrightProbe", () => {
       }),
       title: vi.fn(async () => ""),
       bodyText: vi.fn(async () => ""),
+      identity: vi.fn(async () => {
+        throw new Error("Identity should not be read");
+      }),
       finalUrl: vi.fn(() => MOBILE_REFERENCE_URL),
       close: vi.fn(async () => undefined),
     };

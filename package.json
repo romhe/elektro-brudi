@@ -10,6 +10,7 @@
   },
   "scripts": {
     "feasibility:mobile": "pnpm --filter @elektro-brudi/feasibility mobile:playwright",
+    "postinstall": "pnpm --filter @elektro-brudi/feasibility install:browser",
     "feasibility:run": "pnpm --filter @elektro-brudi/feasibility start",
     "lint": "eslint . && prettier --check .",
     "typecheck": "pnpm -r typecheck",

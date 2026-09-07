@@ -1,4 +1,15 @@
-# mobile.de Headed Playwright Capture Implementation Plan
+# mobile.de Self-Contained Headless Browser Capture Implementation Plan
+
+> **Outcome amendment (2026-09-07):** The original generic headed Chromium
+> runner was blocked. Controlled comparisons showed that MotoBrudi's exact
+> headless behavior and an HTTP-only impersonating client do not yield listing
+> data. The implemented proof instead installs Playwright's pinned
+> Chrome-for-Testing inside the project, launches it with an ephemeral profile in
+> headless mode, normalizes its User-Agent to the same binary's visible identity,
+> attaches over a nonzero localhost CDP port, and executes the site's JavaScript
+> normally. It has no Helium, Python, MCP, or Docker runtime dependency. The
+> detailed original TDD steps below remain as the execution
+> history; the design document is authoritative for the final architecture.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

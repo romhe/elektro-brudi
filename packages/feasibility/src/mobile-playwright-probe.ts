@@ -15,6 +15,20 @@ interface MobileSnapshotInput {
   readonly title: string;
   readonly renderedText: string;
   readonly durationMs: number;
+  readonly browserIdentity?: MobileBrowserIdentity;
+}
+
+export interface MobileBrowserIdentity {
+  readonly browserVersion: string;
+  readonly userAgent: string;
+  readonly platform: string;
+  readonly vendor: string;
+  readonly language: string;
+  readonly languages: readonly string[];
+  readonly webdriver: boolean;
+  readonly brands: readonly string[];
+  readonly mobile: boolean | null;
+  readonly uaPlatform: string | null;
 }
 
 export interface MobileBrowserSession {
@@ -24,6 +38,7 @@ export interface MobileBrowserSession {
   ) => Promise<{ readonly httpStatus: number | null }>;
   readonly title: () => Promise<string>;
   readonly bodyText: () => Promise<string>;
+  readonly identity: () => Promise<MobileBrowserIdentity>;
   readonly finalUrl: () => string;
   readonly close: () => Promise<void>;
 }
@@ -41,12 +56,30 @@ export interface MobileProbeResult {
   readonly durationMs: number;
   readonly contentBytes: number | null;
   readonly contentSha256: string | null;
+  readonly browserIdentity: MobileBrowserIdentity | null;
+  readonly nativeIdentityPreserved: boolean | null;
   readonly extraction: ReturnType<typeof extractSnapshot> | null;
   readonly error: string | null;
 }
 
 const blockedMarker =
   /(?:access denied|zugriff verweigert|captcha|security reasons)/iu;
+
+export function isNativeBrowserIdentity(
+  identity: MobileBrowserIdentity,
+): boolean {
+  const brands = new Set(identity.brands);
+  return (
+    identity.webdriver === false &&
+    !identity.userAgent.includes("HeadlessChrome") &&
+    /\bChrome\/\d+/u.test(identity.userAgent) &&
+    identity.platform === "MacIntel" &&
+    identity.vendor === "Google Inc." &&
+    identity.mobile === false &&
+    identity.uaPlatform === "macOS" &&
+    brands.has("Chromium")
+  );
+}
 
 export function classifyMobileSnapshot(
   input: MobileSnapshotInput,
@@ -71,6 +104,10 @@ export function classifyMobileSnapshot(
       contentSha256: createHash("sha256")
         .update(input.renderedText)
         .digest("hex"),
+      browserIdentity: input.browserIdentity ?? null,
+      nativeIdentityPreserved: input.browserIdentity
+        ? isNativeBrowserIdentity(input.browserIdentity)
+        : null,
       extraction: null,
       error: "mobile.de returned an access-denied page",
     };
@@ -96,6 +133,10 @@ export function classifyMobileSnapshot(
     contentSha256: createHash("sha256")
       .update(input.renderedText)
       .digest("hex"),
+    browserIdentity: input.browserIdentity ?? null,
+    nativeIdentityPreserved: input.browserIdentity
+      ? isNativeBrowserIdentity(input.browserIdentity)
+      : null,
     extraction,
     error: hasOfferEvidence
       ? null
@@ -119,6 +160,8 @@ export function buildMobileProbeFailure(input: {
     durationMs: input.durationMs,
     contentBytes: null,
     contentSha256: null,
+    browserIdentity: null,
+    nativeIdentityPreserved: null,
     extraction: null,
     error:
       input.error instanceof Error
@@ -137,9 +180,10 @@ export async function runMobilePlaywrightProbe(
   try {
     session = await createSession();
     const navigation = await session.navigate(MOBILE_REFERENCE_URL, 45_000);
-    const [title, renderedText] = await Promise.all([
+    const [title, renderedText, browserIdentity] = await Promise.all([
       session.title(),
       session.bodyText(),
+      session.identity(),
     ]);
 
     return classifyMobileSnapshot({
@@ -149,6 +193,7 @@ export async function runMobilePlaywrightProbe(
       title,
       renderedText,
       durationMs: Math.max(0, now() - startedAt),
+      browserIdentity,
     });
   } catch (error) {
     return buildMobileProbeFailure({

@@ -1,6 +1,7 @@
 # ElektroBrudi UI Design
 
 **Date:** 2026-09-06  
+**Revised:** 2026-09-07 — table-first Overview approved  
 **Status:** Approved  
 **Source:** GitHub issues #1, #10, #18, #19, #20, and #37
 
@@ -8,7 +9,7 @@
 
 Design a three-page editable Figma file that establishes ElektroBrudi's visual guidelines, component language, and polished Overview/Import experience. The system must provide enough representative Offer Detail and Settings patterns to make subsequent responsive HTML mockups deterministic. The experience should combine a trustworthy, data-rich decision cockpit with the restraint and familiarity of a native macOS utility.
 
-The design must help the user answer one question quickly: which currently verified electric-car offer is the best practical and financial choice compared with keeping the Golf?
+The design must help the user answer two questions quickly: how do all current offers compare, and which verified electric-car offer is the best practical and financial choice compared with keeping the Golf?
 
 ## Product boundaries
 
@@ -57,16 +58,20 @@ The top toolbar contains the current page title and only the actions relevant to
 
 ### Overview and import
 
-The overview reads from action to answer:
+The desktop Overview is a table-first portfolio view rather than a reduced Offer Detail page. Its primary purpose is scanning, filtering, sorting, and selecting across every existing offer without navigation.
 
-1. URL import with source classification
-2. Active job progress when applicable
-3. Best verified offer
-4. Supporting winner categories
-5. Golf cost comparison
-6. Filterable, sortable offer list
+The overview reads from scope to comparison:
 
-The winner is visually dominant only when it is fully verified and gate-eligible. Unverified or partial candidates must not visually compete with it.
+1. Header actions for importing and refreshing offers
+2. Compact collection summary: total, verified, attention required, last refresh
+3. Persistent search and filters for verification, source, finance eligibility, and equipment gaps
+4. Dense sortable comparison table containing every existing offer
+5. Contextual inspector for the currently selected table row
+6. Active job progress only while import or refresh work is running
+
+The winner is represented by the offer whose stable decision-ranking attribute is `order = 1`. The localized UI label is `Rang`. Rank remains visible and unchanged when the user sorts by another column, so a price sort does not silently redefine the recommendation order. The winning row uses restrained emphasis; there is no separate winner card.
+
+Selecting a row updates an inspector without leaving the Overview. It contains the selected offer's key costs, Golf delta, 70/30 score split, verification quality, equipment summary, and a `Details öffnen` action. Full evidence, corrections, financing scenarios, and provenance remain on Offer Detail.
 
 ### Offer detail
 
@@ -93,10 +98,11 @@ Each section validates and saves independently. A live baseline summary remains 
 
 Information is ordered consistently:
 
-1. **Answer:** winner, monthly delta, and verification outcome
-2. **Action:** import, refresh, inspect evidence, and add financing
-3. **Explanation:** score composition, assumptions, and provenance
-4. **Diagnostics:** crawl progress, partial results, connectivity, and model state
+1. **Scope:** visible result count, filters, and current sort
+2. **Comparison:** ranked offer rows and decision-critical columns
+3. **Selection:** quick details for the active row
+4. **Action:** import, refresh, open full details, and adjust filters
+5. **Diagnostics:** crawl progress, partial results, connectivity, and model state
 
 This hierarchy changes temporarily while work is active: job progress becomes the focal element during crawling or local-model inference, then yields to the decision summary after completion.
 
@@ -111,7 +117,7 @@ Required components:
 - URLImport
 - JobProgress
 - StatusBadge
-- WinnerCard
+- SelectedOfferInspector
 - ReferenceDelta
 - OfferTable and OfferCard
 - ScoreBreakdown
@@ -142,21 +148,24 @@ Finance cards expose down payment, monthly rate, term, balloon, interest, fees, 
 
 ### Overview / Desktop — 1440 x 1024
 
-- URL import and refresh actions
-- Compact completed-job summary
-- Dominant verified-winner card
-- Golf monthly-cost comparison
-- Four supporting winner metrics
-- Dense, sortable offer table
-- Clearly contrasting unverified candidate
+- Import and refresh actions in the page header
+- Compact collection metrics for total, verified, attention required, and freshness
+- Search plus verification, source, finance-eligibility, and equipment-gap filters
+- Dense comparison table containing every offer
+- Stable `Rang` column backed by the decision-ranking `order` attribute
+- Sortable purchase price, mileage, effective monthly cost, Golf delta, score, and freshness columns
+- Persistent selected-row highlight and right-side SelectedOfferInspector
+- Clearly contrasting verified, unverified, partial, and failed states
+
+The table columns are: `Rang`, `Fahrzeug`, `Verifikation`, `Kaufpreis`, `Kilometer`, `Effektiv/Monat`, `Golf-Differenz`, `Finanzierung`, `Ausstattung`, `Score`, `Aktualisiert`, and the row action. At 1440 px, less important subvalues may be stacked within a cell, but no offer is hidden behind a winner card or separate category.
 
 ### Overview / Mobile — 390 x 844
 
 - Import and primary action above the fold
-- Active progress followed by the winner card
-- Stacked Golf comparison
-- Collapsible supporting winners
-- Offer cards containing status, effective monthly cost, delta, and score
+- Result count and compact search/sort/filter controls
+- Active progress only while work is running
+- Ranked offer cards containing verification, purchase price, mileage, effective monthly cost, Golf delta, equipment, and score
+- Selected-offer details in a bottom sheet or disclosure
 
 ### Offer detail / Representative desktop section
 
@@ -193,7 +202,7 @@ Finance cards expose down payment, monthly rate, term, balloon, interest, fees, 
 
 ## Responsive behavior
 
-Desktop uses a compact combination of tables and cards. Mobile preserves the answer-first order, stacks data, converts tables to cards, and moves contextual detail into disclosures or bottom sheets. The 390 px layout must have no horizontal page scrolling.
+Desktop uses a dense comparison table with a contextual inspector. Mobile preserves ranking and filter state, converts rows to cards, and moves selected-offer detail into a disclosure or bottom sheet. The 390 px layout must have no horizontal page scrolling.
 
 ## Required states
 
@@ -239,6 +248,9 @@ The Key Screens page contains the polished 1440 x 1024 and 390 x 844 Overview/Im
 
 - The polished Overview/Import frames exist at exactly 1440 x 1024 and 390 x 844.
 - Desktop and mobile Overview implement the same product hierarchy without horizontal scrolling at 390 px.
+- Desktop Overview exposes every existing offer in one filterable, sortable table and never substitutes a winner card for portfolio comparison.
+- `Rang` is backed by stable `order` data and remains independent of the currently sorted column.
+- Selecting a row updates SelectedOfferInspector without navigating; full evidence and corrections remain on Offer Detail.
 - Representative Offer Detail and Settings sections define layout, evidence, finance, form, responsive, and interaction patterns for later HTML mockups.
 - Verification, freshness, and extraction confidence remain visually distinct.
 - A verified winner cannot be confused with an unverified or partial candidate.

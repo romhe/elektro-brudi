@@ -321,9 +321,10 @@ function extractPrice(lines: readonly EvidenceLine[]) {
   const candidates = lines
     .map((line) => {
       const amounts = parseEuroAmounts(line.text);
+      const purchaseAmounts = excludeNonPurchaseAmounts(line.text, amounts);
       const purchaseMatch = purchasePriceQualifier.exec(line.text);
       const amount = purchaseMatch
-        ? amounts.toSorted(
+        ? purchaseAmounts.toSorted(
             (left, right) =>
               distanceToMatch(
                 left,
@@ -336,7 +337,7 @@ function extractPrice(lines: readonly EvidenceLine[]) {
                 purchaseMatch[0].length,
               ),
           )[0]
-        : excludeNonPurchaseAmounts(line.text, amounts).toSorted(
+        : purchaseAmounts.toSorted(
             (left, right) => left.value - right.value,
           )[0];
       return amount

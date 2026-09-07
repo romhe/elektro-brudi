@@ -173,6 +173,14 @@ Ehem. empfohlener Verkaufspreis (UPE) 40.820 EUR
     expect(withDownPayment.fields.price?.value).toBe(29_990);
     expect(withListPrice.fields.price?.value).toBe(29_990);
   });
+
+  it("does not treat a recommended former selling price as the purchase price", () => {
+    const extraction = extractSnapshot(
+      "Ehem. empfohlener Verkaufspreis (UPE) 40.820 EUR",
+    );
+
+    expect(extraction.fields.price).toBeUndefined();
+  });
 });
 
 describe("buildProofReport", () => {

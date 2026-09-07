@@ -7,6 +7,11 @@ import {
   type ExtractionEnvelope,
 } from "@elektro-brudi/contracts";
 
+export interface ReferenceSource {
+  readonly id: string;
+  readonly url: string;
+}
+
 export const referenceSources = [
   {
     id: "volkswagen",
@@ -28,9 +33,7 @@ export const referenceSources = [
     id: "tesla",
     url: "https://www.tesla.com/de_DE/m3/order/LRW3E7FJ1MC333106?postal=31582&coord=52.6493,9.2365&region=NI&titleStatus=used&redirect=no#overview",
   },
-] as const;
-
-export type ReferenceSource = (typeof referenceSources)[number];
+] as const satisfies readonly ReferenceSource[];
 
 export const equipmentIds = [
   "adaptive_cruise_control",

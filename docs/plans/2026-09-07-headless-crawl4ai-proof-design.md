@@ -10,7 +10,7 @@ for price and ten representative equipment attributes.
 ## Scope
 
 The proof is one TypeScript command in `packages/feasibility`. It submits the
-five fixed reference URLs in one Crawl4AI request, processes every returned
+five fixed reference URLs as five sequential Crawl4AI requests, processes every
 result independently, and writes one JSON report to standard output. It does
 not persist snapshots, follow links, paginate, score offers, invoke an LLM, or
 provide a UI or database.
@@ -25,8 +25,9 @@ expected to reach the remote HTTP server.
    `/usr/bin/security` with the fixed argument array `find-generic-password`,
    `-a`, `default`, `-s`, `de.elektrobrudi.crawl4ai`, `-w`.
 2. Fetch `GET /health` to record the running Crawl4AI version.
-3. Submit all five URLs to `POST /crawl` at
-   `https://crawl4ai.locl.be` with Bearer authentication.
+3. Submit each URL once to `POST /crawl` at
+   `https://crawl4ai.locl.be` with Bearer authentication. Separate requests
+   provide honest per-source timing and isolate transport failures.
 4. Normalize each response to a per-source result. A missing or failed source
    becomes an explicit failure record without discarding other sources.
 5. Select `fit_markdown` when non-empty and otherwise `raw_markdown`, then

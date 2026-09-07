@@ -6,14 +6,50 @@ const nonEmptyStringSchema = z
   .string()
   .refine((value) => value.trim().length > 0);
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/);
-const forbiddenFieldNameSchema = z
-  .string()
-  .min(1)
-  .refine(
-    (fieldName) =>
-      !/(finance|leasing|availability|sold|verification)/i.test(fieldName) &&
-      fieldName !== "monthlyPayment",
+const forbiddenFieldConcepts = [
+  "finance",
+  "financing",
+  "financial",
+  "leasing",
+  "lease",
+  "credit",
+  "loan",
+  "interest",
+  "availability",
+  "available",
+  "sold",
+  "verification",
+  "verified",
+  "verify",
+] as const;
+const forbiddenFieldNameSchema = nonEmptyStringSchema.refine((fieldName) => {
+  const fieldNameWords = fieldName
+    .trim()
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length > 0);
+  const normalizedFieldName = fieldNameWords.join("");
+  const containsAprConcept =
+    fieldNameWords.some(
+      (word) =>
+        word === "apr" || word.endsWith("apr") || word.startsWith("aprrate"),
+    ) || normalizedFieldName.includes("annualpercentagerate");
+  const containsPaymentConcept = [
+    "monthlypayment",
+    "downpayment",
+    "balloonpayment",
+  ].some((concept) => normalizedFieldName.includes(concept));
+
+  return (
+    !containsAprConcept &&
+    !containsPaymentConcept &&
+    !fieldNameWords.some((word) =>
+      forbiddenFieldConcepts.some((concept) => word.startsWith(concept)),
+    )
   );
+});
 
 export const extractionFieldValueSchema = z.union([
   z.string(),
@@ -101,7 +137,7 @@ export const extractionEnvelopeSchema = z.strictObject({
   extractorVersion: nonEmptyStringSchema,
   snapshotSha256: sha256Schema,
   fields: z.record(forbiddenFieldNameSchema, extractionFieldSchema),
-  equipment: z.record(z.string().min(1), equipmentClaimSchema),
+  equipment: z.record(nonEmptyStringSchema, equipmentClaimSchema),
   diagnostics: z.array(extractionDiagnosticSchema),
 });
 

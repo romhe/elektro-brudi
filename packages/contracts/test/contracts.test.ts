@@ -10,6 +10,25 @@ const forbiddenExtractionKeys = [
   ["verification", "verificationStatus"],
 ] as const;
 
+const forbiddenVehicleFieldKeys = [
+  "monthlyPayment",
+  "leasingRate",
+  "availabilityStatus",
+  "sold",
+  "verificationStatus",
+  "MonthlyPayment",
+  "monthly_payment",
+  "creditAmount",
+  "loanAmount",
+  "downPayment",
+  "balloonPayment",
+  "interestRate",
+  "financeAmount",
+  "financingOffer",
+  "leaseRate",
+  "APR_rate",
+] as const;
+
 const validSource = {
   fixtureId: "dealer-detail-001",
   domain: "dealer.example",
@@ -235,9 +254,9 @@ describe("extractionEnvelopeSchema", () => {
     },
   );
 
-  it.each(forbiddenExtractionKeys)(
-    "rejects forbidden %s field %s",
-    (_category, fieldName) => {
+  it.each(forbiddenVehicleFieldKeys)(
+    "rejects forbidden field %s",
+    (fieldName) => {
       expect(() =>
         extractionEnvelopeSchema.parse({
           ...validExtraction,
@@ -249,6 +268,32 @@ describe("extractionEnvelopeSchema", () => {
       ).toThrow();
     },
   );
+
+  it.each([
+    ["field", { fields: { "   ": validExtraction.fields.price } }],
+    [
+      "equipment",
+      { equipment: { "   ": validExtraction.equipment.heat_pump } },
+    ],
+  ] as const)("rejects a whitespace-only %s key", (_label, override) => {
+    expect(() =>
+      extractionEnvelopeSchema.parse({ ...validExtraction, ...override }),
+    ).toThrow();
+  });
+
+  it("preserves permitted field and equipment keys", () => {
+    const extractionWithOriginalKeys = {
+      ...validExtraction,
+      fields: { " releaseDate ": validExtraction.fields.price },
+      equipment: {
+        " heat_pump ": validExtraction.equipment.heat_pump,
+      },
+    };
+
+    expect(extractionEnvelopeSchema.parse(extractionWithOriginalKeys)).toEqual(
+      extractionWithOriginalKeys,
+    );
+  });
 
   it("excludes forbidden top-level properties from the TypeScript type", () => {
     type ForbiddenTopLevelKey = (typeof forbiddenExtractionKeys)[number][1];

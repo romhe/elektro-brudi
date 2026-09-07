@@ -180,8 +180,19 @@ export function App() {
       if (!loaded || loaded.modelId !== modelId) {
         throw new Error(`${modelId} ist nicht geladen`);
       }
+      const constrained =
+        new URLSearchParams(window.location.search).get("constrained") !== "0";
+      setProgress({
+        modelId,
+        text: constrained ? "Generierung (Grammatik)…" : "Generierung (frei)…",
+        value: 1,
+      });
       try {
-        const result = await generateProofJson(loaded);
+        const result = await generateProofJson(loaded, {
+          constrained,
+          onPartial: (partial) =>
+            setProgress({ modelId, text: `Ausgabe: ${partial}`, value: 1 }),
+        });
         const outputJson = JSON.stringify(result.parsed);
         await api.createModelRun({
           browserUserAgent: navigator.userAgent,
@@ -194,7 +205,7 @@ export function App() {
           error: null,
         });
         setModelRuns(await api.listModelRuns());
-        return `${outputJson} in ${formatMs(result.durationMs)}`;
+        return `${outputJson} in ${formatMs(result.durationMs)}${constrained ? "" : " (ohne Grammatik)"}`;
       } catch (error) {
         await api.createModelRun({
           browserUserAgent: navigator.userAgent,

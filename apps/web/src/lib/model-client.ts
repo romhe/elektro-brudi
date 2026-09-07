@@ -92,10 +92,19 @@ export interface GenerationResult {
 
 export const GENERATION_TIMEOUT_MS = 180_000;
 
+export interface GenerationOptions {
+  readonly timeoutMs?: number;
+  /** Grammar-constrained decoding via response_format. Default true. */
+  readonly constrained?: boolean;
+  readonly onPartial?: (partialText: string) => void;
+}
+
 export async function generateProofJson(
   loaded: LoadedModel,
-  timeoutMs = GENERATION_TIMEOUT_MS,
+  options: GenerationOptions = {},
 ): Promise<GenerationResult> {
+  const timeoutMs = options.timeoutMs ?? GENERATION_TIMEOUT_MS;
+  const constrained = options.constrained ?? true;
   const startedAt = performance.now();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_resolve, reject) => {
@@ -109,25 +118,37 @@ export async function generateProofJson(
       timeoutMs,
     );
   });
-  let reply;
+
+  const collect = async (): Promise<string> => {
+    const stream = await loaded.engine.chat.completions.create({
+      messages: proofMessages,
+      temperature: 0,
+      max_tokens: 160,
+      stream: true,
+      ...(constrained
+        ? {
+            response_format: {
+              type: "json_object" as const,
+              schema: minimalExtractionSchema,
+            },
+          }
+        : {}),
+      extra_body: { enable_thinking: false },
+    });
+    let text = "";
+    for await (const chunk of stream) {
+      text += chunk.choices[0]?.delta.content ?? "";
+      options.onPartial?.(text);
+    }
+    return text;
+  };
+
+  let raw: string;
   try {
-    reply = await Promise.race([
-      loaded.engine.chat.completions.create({
-        messages: proofMessages,
-        temperature: 0,
-        max_tokens: 160,
-        response_format: {
-          type: "json_object",
-          schema: minimalExtractionSchema,
-        },
-        extra_body: { enable_thinking: false },
-      }),
-      timeout,
-    ]);
+    raw = await Promise.race([collect(), timeout]);
   } finally {
     clearTimeout(timer);
   }
-  const raw = reply.choices[0]?.message.content ?? "";
   return {
     raw,
     parsed: parseModelOutput(raw),

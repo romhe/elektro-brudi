@@ -1,4 +1,4 @@
-import { createBrowserSession } from "./mobile-browser-session.ts";
+import { createBrowserSession } from "@elektro-brudi/browser";
 import { runMobilePlaywrightProbe } from "./mobile-playwright-probe.ts";
 
 const browserExecutable = process.env.MOBILE_BROWSER_EXECUTABLE_PATH;

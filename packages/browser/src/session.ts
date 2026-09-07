@@ -1,7 +1,9 @@
+import "./env.ts";
 import { execFileSync, spawn } from "node:child_process";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { ChildProcess } from "node:child_process";
 import { once } from "node:events";
+import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -10,9 +12,27 @@ import { chromium } from "playwright";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { Browser, Page } from "playwright";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
-import type { MobileBrowserIdentity } from "./mobile-playwright-probe.ts";
+import type { BrowserDescription } from "./types.ts";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
-import type { MobileBrowserSession } from "./mobile-playwright-probe.ts";
+import type { BrowserIdentity } from "./types.ts";
+// eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
+import type { BrowserSession } from "./types.ts";
+
+export function browserExecutablePath(): string {
+  return chromium.executablePath();
+}
+
+export function describeBrowser(
+  executablePath = browserExecutablePath(),
+): BrowserDescription {
+  if (!existsSync(executablePath)) {
+    throw new Error("The project browser binary is not installed");
+  }
+  return {
+    executablePath,
+    chromiumVersion: readChromiumVersion(executablePath),
+  };
+}
 
 export function buildBrowserUserAgent(chromiumVersion: string): string {
   const majorVersion = /^(?<major>\d+)\./u.exec(chromiumVersion)?.groups?.major;
@@ -167,7 +187,7 @@ async function waitForDevToolsEndpoint(
 async function readIdentity(
   page: Page,
   browserVersion: string,
-): Promise<MobileBrowserIdentity> {
+): Promise<BrowserIdentity> {
   const identity = await page.evaluate(async () => {
     interface UserAgentData {
       readonly brands: readonly { readonly brand: string }[];
@@ -212,8 +232,8 @@ async function stopBrowser(
 }
 
 export async function createBrowserSession(
-  executablePath = chromium.executablePath(),
-): Promise<MobileBrowserSession> {
+  executablePath = browserExecutablePath(),
+): Promise<BrowserSession> {
   const chromiumVersion = readChromiumVersion(executablePath);
   const userAgent = buildBrowserUserAgent(chromiumVersion);
   const debugPort = await reserveLocalPort();

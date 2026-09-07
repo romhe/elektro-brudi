@@ -1,0 +1,19 @@
+{
+  "name": "@elektro-brudi/browser",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "install:browser": "PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium --no-shell",
+    "test:package-import": "node --input-type=module --eval 'await import(\"@elektro-brudi/browser\")'",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "playwright": "1.63.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3"
+  }
+}

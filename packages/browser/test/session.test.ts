@@ -3,7 +3,7 @@ import {
   buildBrowserLaunchArguments,
   buildBrowserUserAgent,
   performHumanPacedNavigation,
-} from "../src/mobile-browser-session.js";
+} from "../src/session.js";
 
 describe("buildBrowserLaunchArguments", () => {
   it("uses a nonzero CDP port so Chromium keeps webdriver disabled", () => {

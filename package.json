@@ -10,11 +10,11 @@
   },
   "scripts": {
     "feasibility:mobile": "pnpm --filter @elektro-brudi/feasibility mobile:playwright",
-    "postinstall": "pnpm --filter @elektro-brudi/feasibility install:browser",
+    "postinstall": "pnpm --filter @elektro-brudi/browser install:browser",
     "feasibility:run": "pnpm --filter @elektro-brudi/feasibility start",
     "lint": "eslint . && prettier --check .",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm --filter @elektro-brudi/contracts test:package-import && pnpm --filter @elektro-brudi/feasibility test:package-import && vitest run"
+    "test": "pnpm --filter @elektro-brudi/contracts test:package-import && pnpm --filter @elektro-brudi/browser test:package-import && pnpm --filter @elektro-brudi/feasibility test:package-import && vitest run"
   },
   "devDependencies": {
     "@babel/core": "8.0.1",

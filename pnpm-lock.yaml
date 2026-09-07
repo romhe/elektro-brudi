@@ -33,6 +33,16 @@ importers:
         specifier: 5.0.0
         version: 5.0.0(@types/node@24.13.3)(vite@8.2.2(@types/node@24.13.3))
 
+  packages/browser:
+    dependencies:
+      playwright:
+        specifier: 1.63.0
+        version: 1.63.0
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+
   packages/contracts:
     dependencies:
       zod:
@@ -41,12 +51,12 @@ importers:
 
   packages/feasibility:
     dependencies:
+      '@elektro-brudi/browser':
+        specifier: workspace:*
+        version: link:../browser
       '@elektro-brudi/contracts':
         specifier: workspace:*
         version: link:../contracts
-      playwright:
-        specifier: 1.63.0
-        version: 1.63.0
     devDependencies:
       '@types/node':
         specifier: 24.13.3

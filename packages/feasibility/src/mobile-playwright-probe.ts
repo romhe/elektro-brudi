@@ -1,5 +1,17 @@
 import { createHash } from "node:crypto";
+import { isNativeBrowserIdentity } from "@elektro-brudi/browser";
+// eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
+import type { BrowserIdentity } from "@elektro-brudi/browser";
+// eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
+import type { BrowserSession } from "@elektro-brudi/browser";
 import { extractSnapshot, referenceSources } from "./reference-suite.ts";
+
+export { isNativeBrowserIdentity } from "@elektro-brudi/browser";
+export type {
+  BrowserIdentity as MobileBrowserIdentity,
+  BrowserSession as MobileBrowserSession,
+  BrowserSessionFactory as MobileBrowserSessionFactory,
+} from "@elektro-brudi/browser";
 
 export const MOBILE_REFERENCE_URL = referenceSources.find(
   ({ id }) => id === "mobile-de",
@@ -15,35 +27,8 @@ interface MobileSnapshotInput {
   readonly title: string;
   readonly renderedText: string;
   readonly durationMs: number;
-  readonly browserIdentity?: MobileBrowserIdentity;
+  readonly browserIdentity?: BrowserIdentity;
 }
-
-export interface MobileBrowserIdentity {
-  readonly browserVersion: string;
-  readonly userAgent: string;
-  readonly platform: string;
-  readonly vendor: string;
-  readonly language: string;
-  readonly languages: readonly string[];
-  readonly webdriver: boolean;
-  readonly brands: readonly string[];
-  readonly mobile: boolean | null;
-  readonly uaPlatform: string | null;
-}
-
-export interface MobileBrowserSession {
-  readonly navigate: (
-    url: string,
-    timeoutMs: number,
-  ) => Promise<{ readonly httpStatus: number | null }>;
-  readonly title: () => Promise<string>;
-  readonly bodyText: () => Promise<string>;
-  readonly identity: () => Promise<MobileBrowserIdentity>;
-  readonly finalUrl: () => string;
-  readonly close: () => Promise<void>;
-}
-
-export type MobileBrowserSessionFactory = () => Promise<MobileBrowserSession>;
 
 export interface MobileProbeResult {
   readonly reportVersion: "1.0.0";
@@ -56,7 +41,7 @@ export interface MobileProbeResult {
   readonly durationMs: number;
   readonly contentBytes: number | null;
   readonly contentSha256: string | null;
-  readonly browserIdentity: MobileBrowserIdentity | null;
+  readonly browserIdentity: BrowserIdentity | null;
   readonly nativeIdentityPreserved: boolean | null;
   readonly extraction: ReturnType<typeof extractSnapshot> | null;
   readonly error: string | null;
@@ -64,22 +49,6 @@ export interface MobileProbeResult {
 
 const blockedMarker =
   /(?:access denied|zugriff verweigert|captcha|security reasons)/iu;
-
-export function isNativeBrowserIdentity(
-  identity: MobileBrowserIdentity,
-): boolean {
-  const brands = new Set(identity.brands);
-  return (
-    identity.webdriver === false &&
-    !identity.userAgent.includes("HeadlessChrome") &&
-    /\bChrome\/\d+/u.test(identity.userAgent) &&
-    identity.platform === "MacIntel" &&
-    identity.vendor === "Google Inc." &&
-    identity.mobile === false &&
-    identity.uaPlatform === "macOS" &&
-    brands.has("Chromium")
-  );
-}
 
 export function classifyMobileSnapshot(
   input: MobileSnapshotInput,
@@ -171,11 +140,11 @@ export function buildMobileProbeFailure(input: {
 }
 
 export async function runMobilePlaywrightProbe(
-  createSession: MobileBrowserSessionFactory,
+  createSession: () => Promise<BrowserSession>,
   now: () => number = performance.now.bind(performance),
 ): Promise<MobileProbeResult> {
   const startedAt = now();
-  let session: MobileBrowserSession | undefined;
+  let session: BrowserSession | undefined;
 
   try {
     session = await createSession();

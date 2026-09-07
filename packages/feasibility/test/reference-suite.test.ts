@@ -161,6 +161,18 @@ Ehem. empfohlener Verkaufspreis (UPE) 40.820 EUR
     expect(withAccessory.fields.price?.value).toBe(29_990);
     expect(withMonthlyRate.fields.price?.value).toBe(29_990);
   });
+
+  it("keeps a labeled purchase price beside non-purchase amounts", () => {
+    const withDownPayment = extractSnapshot(
+      "Kaufpreis 29.990 EUR, Anzahlung 5.000 EUR",
+    );
+    const withListPrice = extractSnapshot(
+      "Kaufpreis 29.990 EUR, UPE 39.990 EUR",
+    );
+
+    expect(withDownPayment.fields.price?.value).toBe(29_990);
+    expect(withListPrice.fields.price?.value).toBe(29_990);
+  });
 });
 
 describe("buildProofReport", () => {

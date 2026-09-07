@@ -280,25 +280,65 @@ function parseEuroAmounts(text: string): EuroAmount[] {
     .sort((left, right) => left.start - right.start);
 }
 
+function distanceToMatch(
+  amount: EuroAmount,
+  qualifierStart: number,
+  qualifierLength: number,
+): number {
+  const qualifierEnd = qualifierStart + qualifierLength;
+  if (amount.start >= qualifierEnd) {
+    return amount.start - qualifierEnd;
+  }
+  if (qualifierStart >= amount.end) {
+    return qualifierStart - amount.end;
+  }
+  return 0;
+}
+
+function excludeNonPurchaseAmounts(
+  text: string,
+  amounts: readonly EuroAmount[],
+): readonly EuroAmount[] {
+  const qualifierPattern = new RegExp(
+    nonPurchasePriceQualifier.source,
+    `${nonPurchasePriceQualifier.flags}g`,
+  );
+  const excluded = new Set<EuroAmount>();
+  for (const qualifier of text.matchAll(qualifierPattern)) {
+    const closest = amounts.toSorted(
+      (left, right) =>
+        distanceToMatch(left, qualifier.index, qualifier[0].length) -
+        distanceToMatch(right, qualifier.index, qualifier[0].length),
+    )[0];
+    if (closest) {
+      excluded.add(closest);
+    }
+  }
+  return amounts.filter((amount) => !excluded.has(amount));
+}
+
 function extractPrice(lines: readonly EvidenceLine[]) {
   const candidates = lines
-    .filter(({ text }) => !nonPurchasePriceQualifier.test(text))
     .map((line) => {
       const amounts = parseEuroAmounts(line.text);
       const purchaseMatch = purchasePriceQualifier.exec(line.text);
       const amount = purchaseMatch
-        ? amounts.toSorted((left, right) => {
-            const qualifierStart = purchaseMatch.index;
-            const qualifierEnd = purchaseMatch.index + purchaseMatch[0].length;
-            const distance = (candidate: EuroAmount) =>
-              candidate.start >= qualifierEnd
-                ? candidate.start - qualifierEnd
-                : qualifierStart >= candidate.end
-                  ? qualifierStart - candidate.end
-                  : 0;
-            return distance(left) - distance(right);
-          })[0]
-        : amounts.toSorted((left, right) => left.value - right.value)[0];
+        ? amounts.toSorted(
+            (left, right) =>
+              distanceToMatch(
+                left,
+                purchaseMatch.index,
+                purchaseMatch[0].length,
+              ) -
+              distanceToMatch(
+                right,
+                purchaseMatch.index,
+                purchaseMatch[0].length,
+              ),
+          )[0]
+        : excludeNonPurchaseAmounts(line.text, amounts).toSorted(
+            (left, right) => left.value - right.value,
+          )[0];
       return amount
         ? { ...line, amount, hasPurchaseLabel: !!purchaseMatch }
         : null;

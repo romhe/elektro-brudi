@@ -276,7 +276,7 @@ function card(parent, name, options = {}) {
     width: options.width,
     height: options.height,
     fill: options.fill || C.surface,
-    stroke: options.stroke === false ? undefined : C.border,
+    stroke: options.stroke === false ? undefined : (options.stroke || C.border),
     radius: options.radius || 14,
     padding: options.padding === undefined ? 20 : options.padding,
     gap: options.gap === undefined ? 12 : options.gap,

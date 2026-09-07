@@ -92,7 +92,7 @@ const GENERATED_ROOTS = [
   '[ElektroBrudi] Key Screens',
 ];
 const BUILD_STATUS_KEY = 'elektro-brudi-build-status';
-const BUILD_COMPLETE = 'v3-text-layout-complete';
+const BUILD_COMPLETE = 'v4-table-overview-complete';
 
 function rgb(hex) {
   const value = hex.replace('#', '');
@@ -859,12 +859,41 @@ function buildOverviewDesktop(page, x, y) {
   return screen;
 }
 
-function mobileOffer(parent, name, score, status, tone) {
-  const offer = card(parent, `OfferCard · ${name}`, { width: 350, padding: 14, gap: 8 });
-  const top = auto(offer, 'Top', 'HORIZONTAL', { width: 322, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
-  text(top, name, { size: 14, weight: 700, width: 215 }); text(top, score, { size: 23, weight: 700, color: tone === 'success' ? C.success : C.text });
-  badge(offer, status, tone);
-  return offer;
+function mobileOffer(parent, offer, selected = false) {
+  const node = card(parent, `OfferCard · order ${offer.order}`, {
+    width: 350, padding: 12, gap: 8,
+    fill: selected ? C.infoBg : C.surface,
+    stroke: selected ? C.accent : C.border,
+    shadow: selected,
+  });
+  const top = auto(node, 'Rank and verification', 'HORIZONTAL', {
+    width: 326, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER',
+  });
+  const rankLabel = offer.order === 1 ? 'Rang 1' : `Rang ${offer.order}`;
+  badge(top, rankLabel, selected ? 'info' : 'neutral');
+  badge(top, offer.verification, offer.verificationTone);
+
+  const identity = auto(node, 'Offer identity', 'HORIZONTAL', {
+    width: 326, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'MIN',
+  });
+  const copy = auto(identity, 'Vehicle and source', 'VERTICAL', { width: 258, gap: 2 });
+  text(copy, offer.vehicle, { size: 14, weight: 700, width: 258, lineHeight: 18 });
+  text(copy, offer.source, { size: 10, color: C.secondary, width: 258, lineHeight: 14 });
+  text(identity, offer.score, { size: 24, weight: 700, color: selected ? C.accent : C.text });
+
+  const facts = auto(node, 'Offer facts', 'HORIZONTAL', { width: 326, gap: 8, counterAlign: 'CENTER' });
+  text(facts, `${offer.price} · ${offer.mileage}`, { size: 10, weight: 500, width: 157 });
+  text(facts, `${offer.monthly} / Monat`, { size: 11, weight: 700, width: 161, align: 'RIGHT' });
+  const evaluation = auto(node, 'Offer evaluation', 'HORIZONTAL', {
+    width: 326, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER',
+  });
+  text(evaluation, `Golf ${offer.golfDelta} · Ausstattung ${offer.equipment}`, { size: 10, color: C.success, weight: 600, width: 235 });
+  text(evaluation, offer.finance, { size: 10, weight: 600, color: offer.financeTone === 'error' ? C.error : offer.financeTone === 'warning' ? C.warning : C.success });
+  if (selected) {
+    const action = button(node, 'Auswahl ansehen', { kind: 'secondary', height: 36 });
+    action.resize(326, 36);
+  }
+  return node;
 }
 
 function buildOverviewMobile(page, x, y) {
@@ -872,24 +901,27 @@ function buildOverviewMobile(page, x, y) {
     x, y, width: 390, height: 844, fill: C.app, radius: 28, clipsContent: true, shadow: true,
   });
   topNav(screen, 'Kaufentscheidung', '', 390, true);
-  const content = auto(screen, 'Content', 'VERTICAL', { width: 390, height: 784, padding: 20, gap: 12 });
+  const content = auto(screen, 'Content', 'VERTICAL', { width: 390, height: 784, padding: 20, gap: 10 });
   const heading = auto(content, 'Heading', 'HORIZONTAL', { width: 350, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
-  const copy = auto(heading, 'Copy', 'VERTICAL', { gap: 2 }); text(copy, 'Deine beste Wahl', { size: 22, weight: 700 }); text(copy, '4 Angebote', { size: 11, color: C.secondary });
+  const copy = auto(heading, 'Copy', 'VERTICAL', { gap: 2 }); text(copy, 'Alle Angebote', { size: 22, weight: 700 }); text(copy, '7 Ergebnisse · Rang bleibt stabil', { size: 11, color: C.secondary });
   iconBox(heading, '＋', { box: 44, fill: C.accent, color: C.surface, radius: 12 });
-  const importer = card(content, 'URLImport', { width: 350, padding: 12, gap: 8 });
-  inputField(importer, 'Angebots-URL', 'URL einfügen', 'default', 326);
-  const importButton = button(importer, 'Importieren', { height: 44 }); importButton.resize(326, 44);
-  const winner = card(content, 'WinnerCard', { width: 350, padding: 16, gap: 8, shadow: true });
-  const badges = auto(winner, 'Badges', 'HORIZONTAL', { gap: 6 }); badge(badges, 'Beste Wahl', 'success'); badge(badges, 'verifiziert', 'success');
-  text(winner, 'Hyundai IONIQ 5', { size: 18, weight: 700 });
-  const score = auto(winner, 'Score', 'HORIZONTAL', { width: 318, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER' });
-  text(score, '84 / 100', { size: 29, weight: 700, color: C.success }); text(score, '499 € / Monat', { size: 13, weight: 600 });
-  text(winner, 'Beste finanzielle Passung; Wunschausstattung bestätigt.', { size: 12, color: C.secondary, width: 318 });
-  text(content, 'Weitere Angebote', { size: 16, weight: 700 });
-  mobileOffer(content, 'Kia EV6 GT-Line', '82', 'verifiziert', 'success');
-  mobileOffer(content, 'VW ID.4 Pro', '76', 'ungeprüft', 'warning');
-  const bottom = auto(screen, 'Bottom action', 'HORIZONTAL', { width: 390, height: 64, fill: C.surface, paddingLeft: 20, paddingRight: 20, counterAlign: 'CENTER' });
-  const action = button(bottom, 'Angebot hinzufügen', { height: 44, icon: '＋' }); action.resize(350, 44);
+  const importer = auto(content, 'Compact import', 'HORIZONTAL', {
+    width: 350, height: 44, fill: C.surface, stroke: C.border, radius: 10,
+    paddingLeft: 12, paddingRight: 6, primaryAlign: 'SPACE_BETWEEN', counterAlign: 'CENTER',
+  });
+  text(importer, 'Angebots-URL einfügen', { size: 12, color: C.secondary });
+  button(importer, 'Importieren', { height: 32 });
+
+  const controls = auto(content, 'Mobile search and sort', 'HORIZONTAL', { width: 350, gap: 8, counterAlign: 'CENTER' });
+  filterControl(controls, 'Suche', 'Suchen', 128, true);
+  filterControl(controls, 'Sortierung', 'Rang ↑', 112);
+  button(controls, 'Filter', { kind: 'secondary', height: 36 });
+
+  text(content, 'Sortierte Treffer', { size: 13, weight: 700 });
+  mobileOffer(content, contract.overviewOffers[0], true);
+  mobileOffer(content, contract.overviewOffers[1]);
+  mobileOffer(content, contract.overviewOffers[2]);
+  text(content, '4 weitere Angebote beim Scrollen', { size: 11, color: C.secondary, width: 350, align: 'CENTER' });
   bindSemanticTokens(screen);
   return screen;
 }

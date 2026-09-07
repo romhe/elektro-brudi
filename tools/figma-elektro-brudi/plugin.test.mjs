@@ -112,6 +112,13 @@ test('renders a table and selected-offer inspector on desktop', () => {
   assert.doesNotMatch(pluginSource, /desktopWinner\(left/);
 });
 
+test('keeps rank, filters, and selection details on mobile', () => {
+  assert.match(pluginSource, /Mobile search and sort/);
+  assert.match(pluginSource, /Rang 1/);
+  assert.match(pluginSource, /Auswahl ansehen/);
+  assert.match(pluginSource, /v4-table-overview-complete/);
+});
+
 test('builds real variant sets and clickable prototype reactions', () => {
   assert.match(pluginSource, /figma\.combineAsVariants\(/);
   assert.match(pluginSource, /setReactionsAsync\(/);

@@ -1152,7 +1152,13 @@ function prepareGeneratedTargets(pages) {
 }
 
 function focusOverview(screens, notification) {
-  const focusFrame = screens.findOne((node) => node.name === contract.overviewFrames[0].name);
+  const focusFrame = screens.findOne((node) => node.name === contract.overviewFrames[0].name)
+    || screens.findOne((node) => (
+      'width' in node
+      && 'height' in node
+      && node.width === contract.overviewFrames[0].width
+      && node.height === contract.overviewFrames[0].height
+    ));
   if (!focusFrame || !('x' in focusFrame)) {
     throw new Error('Primary Overview frame was not found.');
   }

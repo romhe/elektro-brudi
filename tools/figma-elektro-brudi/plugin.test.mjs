@@ -140,6 +140,7 @@ test('preserves complete output but cleans incomplete generated roots', () => {
 
 test('focuses the primary desktop screen instead of the full key-screen board', () => {
   assert.match(pluginSource, /focusFrame = screens\.findOne/);
+  assert.match(pluginSource, /node\.width === contract\.overviewFrames\[0\]\.width/);
   assert.match(pluginSource, /figma\.currentPage\.selection = \[focusFrame\]/);
   assert.match(pluginSource, /figma\.viewport\.scrollAndZoomIntoView\(\[focusFrame\]\)/);
   assert.doesNotMatch(pluginSource, /figma\.currentPage\.selection = \[screens\]/);

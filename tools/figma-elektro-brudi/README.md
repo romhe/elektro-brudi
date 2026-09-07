@@ -12,6 +12,11 @@ not delete or replace existing generated content.
 4. Run **Plugins → Development → ElektroBrudi Design Builder**.
 5. Wait for the success toast, then inspect all three pages.
 
+The plugin focuses the desktop Overview frame after a successful build. To
+assess any other frame at a readable scale, select it and press **Shift+2**
+(`Zoom to selection`); do not evaluate typography while the full 3100 × 3900
+Key Screens board is fitted at 50%.
+
 The builder requires SF Pro, which is available in Figma Desktop on macOS. It
 expects exactly these existing pages:
 

@@ -1020,8 +1020,12 @@ async function build() {
     cleanupIncompleteGeneratedRoots(pages);
     throw error;
   }
-  figma.currentPage.selection = [screens];
-  figma.viewport.scrollAndZoomIntoView([screens]);
+  const focusFrame = screens.findOne((node) => node.name === contract.overviewFrames[0].name);
+  if (!focusFrame || !('x' in focusFrame)) {
+    throw new Error('Primary Overview frame was not created.');
+  }
+  figma.currentPage.selection = [focusFrame];
+  figma.viewport.scrollAndZoomIntoView([focusFrame]);
   figma.notify('ElektroBrudi: 3 pages, component language, key screens and prototype created.', { timeout: 5000 });
   figma.closePlugin('ElektroBrudi design built successfully.');
   return { foundations, components, screens };

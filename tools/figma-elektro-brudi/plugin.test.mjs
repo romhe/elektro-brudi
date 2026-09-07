@@ -102,3 +102,10 @@ test('preserves complete output but cleans incomplete generated roots', () => {
   assert.match(pluginSource, /Generated content is already complete\. Nothing was changed\./);
   assert.match(pluginSource, /node\.getPluginData\(BUILD_STATUS_KEY\) !== BUILD_COMPLETE/);
 });
+
+test('focuses the primary desktop screen instead of the full key-screen board', () => {
+  assert.match(pluginSource, /focusFrame = screens\.findOne/);
+  assert.match(pluginSource, /figma\.currentPage\.selection = \[focusFrame\]/);
+  assert.match(pluginSource, /figma\.viewport\.scrollAndZoomIntoView\(\[focusFrame\]\)/);
+  assert.doesNotMatch(pluginSource, /figma\.currentPage\.selection = \[screens\]/);
+});

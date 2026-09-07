@@ -1143,19 +1143,37 @@ function prepareGeneratedTargets(pages) {
   pages.forEach((page) => {
     page.children.forEach((node) => {
       if (GENERATED_ROOTS.includes(node.name) && node.getPluginData(BUILD_STATUS_KEY) === BUILD_COMPLETE) {
-        complete.push(`${page.name} / ${node.name}`);
+        complete.push(node);
       }
     });
   });
   cleanupIncompleteGeneratedRoots(pages);
-  if (complete.length) {
-    throw new Error(`Generated content is already complete. Nothing was changed. Existing root(s): ${complete.join(', ')}`);
+  return complete;
+}
+
+function focusOverview(screens, notification) {
+  const focusFrame = screens.findOne((node) => node.name === contract.overviewFrames[0].name);
+  if (!focusFrame || !('x' in focusFrame)) {
+    throw new Error('Primary Overview frame was not found.');
   }
+  figma.currentPage.selection = [focusFrame];
+  figma.viewport.scrollAndZoomIntoView([focusFrame]);
+  figma.notify(notification, { timeout: 5000 });
 }
 
 async function build() {
   const pages = await findPages();
-  prepareGeneratedTargets(pages);
+  const completeRoots = prepareGeneratedTargets(pages);
+  if (completeRoots.length) {
+    await figma.setCurrentPageAsync(pages[2]);
+    const existingScreens = completeRoots.find((node) => node.name === GENERATED_ROOTS[2]);
+    if (!existingScreens || !('findOne' in existingScreens)) {
+      throw new Error('Completed Key Screens root was not found.');
+    }
+    focusOverview(existingScreens, 'Existing Overview focused.');
+    figma.closePlugin('Existing Overview focused.');
+    return;
+  }
   await loadContext();
   let foundations;
   let components;
@@ -1172,13 +1190,7 @@ async function build() {
     cleanupIncompleteGeneratedRoots(pages);
     throw error;
   }
-  const focusFrame = screens.findOne((node) => node.name === contract.overviewFrames[0].name);
-  if (!focusFrame || !('x' in focusFrame)) {
-    throw new Error('Primary Overview frame was not created.');
-  }
-  figma.currentPage.selection = [focusFrame];
-  figma.viewport.scrollAndZoomIntoView([focusFrame]);
-  figma.notify('ElektroBrudi: 3 pages, component language, key screens and prototype created.', { timeout: 5000 });
+  focusOverview(screens, 'ElektroBrudi: 3 pages, component language, key screens and prototype created.');
   figma.closePlugin('ElektroBrudi design built successfully.');
   return { foundations, components, screens };
 }

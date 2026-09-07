@@ -133,7 +133,8 @@ test('uses valid Figma auto-layout alignment values', () => {
 test('preserves complete output but cleans incomplete generated roots', () => {
   assert.match(pluginSource, /prepareGeneratedTargets\(pages\)/);
   assert.match(pluginSource, /cleanupIncompleteGeneratedRoots\(pages\)/);
-  assert.match(pluginSource, /Generated content is already complete\. Nothing was changed\./);
+  assert.match(pluginSource, /Existing Overview focused/);
+  assert.match(pluginSource, /if \(completeRoots\.length\)/);
   assert.match(pluginSource, /node\.getPluginData\(BUILD_STATUS_KEY\) !== BUILD_COMPLETE/);
 });
 

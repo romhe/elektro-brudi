@@ -92,7 +92,7 @@ const GENERATED_ROOTS = [
   '[ElektroBrudi] Key Screens',
 ];
 const BUILD_STATUS_KEY = 'elektro-brudi-build-status';
-const BUILD_COMPLETE = 'v4-table-overview-complete';
+const BUILD_COMPLETE = 'v5-table-overview-focused';
 
 function rgb(hex) {
   const value = hex.replace('#', '');

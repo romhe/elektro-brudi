@@ -117,7 +117,7 @@ test('keeps rank, filters, and selection details on mobile', () => {
   assert.match(pluginSource, /Rang 1/);
   assert.match(pluginSource, /Auswahl ansehen/);
   assert.match(pluginSource, /options\.stroke \|\| C\.border/);
-  assert.match(pluginSource, /v4-table-overview-complete/);
+  assert.match(pluginSource, /v5-table-overview-focused/);
 });
 
 test('builds real variant sets and clickable prototype reactions', () => {

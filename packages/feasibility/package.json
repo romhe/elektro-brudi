@@ -4,12 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "mobile:playwright": "node src/mobile-playwright-cli.ts",
     "start": "node src/cli.ts",
-    "test:package-import": "node --input-type=module --eval 'await import(\"./src/reference-suite.ts\"); await import(\"./src/crawl4ai-client.ts\")'",
+    "test:package-import": "node --input-type=module --eval 'await import(\"./src/reference-suite.ts\"); await import(\"./src/crawl4ai-client.ts\"); await import(\"./src/mobile-playwright-probe.ts\")'",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
   "dependencies": {
+    "@elektro-brudi/browser": "workspace:*",
     "@elektro-brudi/contracts": "workspace:*"
   },
   "devDependencies": {

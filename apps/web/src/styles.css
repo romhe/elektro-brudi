@@ -1,0 +1,96 @@
+:root {
+  color-scheme: light;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  background: #f6f7f9;
+  color: #16202c;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 4px;
+}
+h2 {
+  font-size: 1.1rem;
+  margin: 0 0 12px;
+}
+section {
+  background: #fff;
+  border: 1px solid #dfe3e8;
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 16px;
+}
+button {
+  font: inherit;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #0b3d91;
+  background: #0b3d91;
+  color: #fff;
+  cursor: pointer;
+  margin-right: 8px;
+}
+button[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+button.secondary {
+  background: #fff;
+  color: #0b3d91;
+}
+input {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid #b8c0cc;
+  border-radius: 6px;
+  margin-right: 8px;
+  min-width: 260px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+th,
+td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #edf0f3;
+  vertical-align: top;
+  word-break: break-word;
+}
+code {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+}
+.status {
+  display: inline-block;
+  min-width: 72px;
+  font-weight: 600;
+}
+.status.done {
+  color: #1a7f37;
+}
+.status.failed {
+  color: #b42318;
+}
+.status.running {
+  color: #b54708;
+}
+.muted {
+  color: #5f6b7a;
+}
+.error {
+  color: #b42318;
+}
+progress {
+  width: 100%;
+}

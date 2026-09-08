@@ -1,0 +1,15 @@
+{
+  "name": "@elektro-brudi/storage",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "test:package-import": "node --input-type=module --eval 'await import(\"@elektro-brudi/storage\")'",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3"
+  }
+}

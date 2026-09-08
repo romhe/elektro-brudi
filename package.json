@@ -9,16 +9,23 @@
     "pnpm": "12.3.4"
   },
   "scripts": {
+    "feasibility:mobile": "pnpm --filter @elektro-brudi/feasibility mobile:playwright",
+    "postinstall": "pnpm --filter @elektro-brudi/browser install:browser",
     "feasibility:run": "pnpm --filter @elektro-brudi/feasibility start",
     "lint": "eslint . && prettier --check .",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm --filter @elektro-brudi/contracts test:package-import && pnpm --filter @elektro-brudi/feasibility test:package-import && vitest run"
+    "test": "pnpm --filter @elektro-brudi/contracts test:package-import && pnpm --filter @elektro-brudi/browser test:package-import && pnpm --filter @elektro-brudi/storage test:package-import && pnpm --filter @elektro-brudi/feasibility test:package-import && vitest run",
+    "build": "pnpm --filter @elektro-brudi/web build",
+    "start": "pnpm --filter @elektro-brudi/server start",
+    "e2e": "playwright test",
+    "app:build": "scripts/build-phase0-app.sh"
   },
   "devDependencies": {
     "@babel/core": "8.0.1",
     "@babel/eslint-parser": "8.0.1",
     "@babel/preset-typescript": "8.0.1",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
     "eslint": "10.10.0",
     "prettier": "3.9.6",
     "typescript": "7.0.2",

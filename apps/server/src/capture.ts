@@ -5,6 +5,7 @@ import type { BrowserDescription } from "@elektro-brudi/browser";
 import type { BrowserSession } from "@elektro-brudi/browser";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { CaptureInput } from "@elektro-brudi/storage";
+import { isPrivatePeerAddress } from "./url-policy.ts";
 
 export const CAPTURE_TIMEOUT_MS = 45_000;
 
@@ -14,6 +15,8 @@ export interface CaptureDependencies {
   readonly snapshotsDir: string;
   readonly now?: () => number;
   readonly timeoutMs?: number;
+  /** Rejects a capture whose browser connected to a non-public peer. */
+  readonly isPrivatePeer?: (address: string) => boolean;
 }
 
 export class BrowserUnavailableError extends Error {}
@@ -43,11 +46,21 @@ export async function captureUrl(
       url,
       dependencies.timeoutMs ?? CAPTURE_TIMEOUT_MS,
     );
-    const [title, bodyText, identity] = await Promise.all([
+    const [title, bodyText, identity, peers] = await Promise.all([
       session.title(),
       session.bodyText(),
       session.identity(),
+      session.peerAddresses(),
     ]);
+    // DNS is resolved again by Chromium. Verify the peers it actually
+    // reached so a rebinding host cannot deliver a private page.
+    const isPrivatePeer = dependencies.isPrivatePeer ?? isPrivatePeerAddress;
+    const privatePeer = peers.find((address) => isPrivatePeer(address));
+    if (privatePeer !== undefined) {
+      throw new Error(
+        `The browser connected to the non-public address ${privatePeer}; the capture was discarded`,
+      );
+    }
     const snapshotPath = join(dependencies.snapshotsDir, `${captureId}.txt`);
     await writeFile(snapshotPath, bodyText, { encoding: "utf8", mode: 0o600 });
     const blocked =

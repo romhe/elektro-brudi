@@ -159,6 +159,7 @@ describe("runMobilePlaywrightProbe", () => {
       title: vi.fn(async () => "VW ID.4"),
       bodyText: vi.fn(async () => "Kaufpreis 29.990 EUR\nApple CarPlay"),
       identity: vi.fn(async () => identity),
+      peerAddresses: vi.fn(async () => []),
       finalUrl: vi.fn(() => MOBILE_REFERENCE_URL),
       close: vi.fn(async () => undefined),
     };
@@ -187,6 +188,7 @@ describe("runMobilePlaywrightProbe", () => {
       identity: vi.fn(async () => {
         throw new Error("Identity should not be read");
       }),
+      peerAddresses: vi.fn(async () => []),
       finalUrl: vi.fn(() => MOBILE_REFERENCE_URL),
       close: vi.fn(async () => undefined),
     };

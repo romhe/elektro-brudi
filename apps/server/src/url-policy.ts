@@ -77,6 +77,12 @@ function isPrivateAddress(address: string, family: number): boolean {
   return family === 4 ? isPrivateIpv4(address) : isPrivateIpv6(address);
 }
 
+/** True for loopback, private, link-local, or otherwise non-public peers. */
+export function isPrivatePeerAddress(address: string): boolean {
+  const family = isIP(address);
+  return family === 0 || isPrivateAddress(address, family);
+}
+
 /**
  * Syntactic policy plus DNS resolution: every address the hostname resolves
  * to must be public. Rejects hostnames that point at loopback or private

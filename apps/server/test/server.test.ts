@@ -28,6 +28,7 @@ function fakeSession(options: {
   readonly httpStatus?: number | null;
   readonly bodyText?: string;
   readonly fail?: Error;
+  readonly peers?: readonly string[];
 }) {
   const session = {
     navigate: vi.fn(async () => {
@@ -41,6 +42,7 @@ function fakeSession(options: {
       async () => options.bodyText ?? "Example Domain\nThis domain is for use",
     ),
     identity: vi.fn(async () => identity),
+    peerAddresses: vi.fn(async () => options.peers ?? ["93.184.216.34"]),
     finalUrl: vi.fn(() => "https://example.com/"),
     close: vi.fn(async () => undefined),
   };
@@ -232,6 +234,24 @@ describe("/api/captures", () => {
     expect(response.json().code).toBe("URL_REJECTED");
     expect(createSession).not.toHaveBeenCalled();
     expect(session.navigate).not.toHaveBeenCalled();
+  });
+
+  it("discards a capture whose browser reached a private peer", async () => {
+    session = fakeSession({ peers: ["93.184.216.34", "10.0.0.8"] });
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/captures",
+      payload: { url: "https://example.com/" },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      outcome: "FETCH_FAILED",
+      snapshotPath: null,
+      contentSha256: null,
+      error:
+        "The browser connected to the non-public address 10.0.0.8; the capture was discarded",
+    });
+    expect(session.close).toHaveBeenCalledOnce();
   });
 
   it("rejects a hostname that resolves to a private address", async () => {

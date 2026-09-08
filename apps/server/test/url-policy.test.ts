@@ -3,6 +3,7 @@ import {
   assertPublicHttpsTarget,
   assertPublicHttpsUrl,
   createRequestPolicy,
+  isPrivatePeerAddress,
 } from "../src/url-policy.js";
 
 describe("assertPublicHttpsUrl", () => {
@@ -94,4 +95,24 @@ describe("createRequestPolicy", () => {
     expect(await policy("not a url")).toBe(false);
     expect(calls).toBe(2);
   });
+});
+
+describe("isPrivatePeerAddress", () => {
+  it.each([
+    "127.0.0.1",
+    "10.1.1.1",
+    "192.168.0.2",
+    "169.254.1.1",
+    "::1",
+    "fd00::1",
+    "not-an-ip",
+  ])("flags %s", (address) => {
+    expect(isPrivatePeerAddress(address)).toBe(true);
+  });
+  it.each(["93.184.216.34", "2606:2800:220:1:248:1893:25c8:1946"])(
+    "accepts %s",
+    (address) => {
+      expect(isPrivatePeerAddress(address)).toBe(false);
+    },
+  );
 });

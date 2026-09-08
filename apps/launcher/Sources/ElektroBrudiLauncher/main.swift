@@ -62,6 +62,30 @@ final class LauncherLog {
     }
 }
 
+/// Direct children of a process, from the kernel process table.
+func childProcesses(of parent: pid_t) -> [pid_t] {
+    var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
+    var size = 0
+    guard sysctl(&mib, 4, nil, &size, nil, 0) == 0, size > 0 else { return [] }
+    let capacity = size / MemoryLayout<kinfo_proc>.stride + 8
+    var entries = [kinfo_proc](repeating: kinfo_proc(), count: capacity)
+    var bytes = capacity * MemoryLayout<kinfo_proc>.stride
+    guard sysctl(&mib, 4, &entries, &bytes, nil, 0) == 0 else { return [] }
+    let count = bytes / MemoryLayout<kinfo_proc>.stride
+    return entries[0..<count]
+        .filter { $0.kp_eproc.e_ppid == parent }
+        .map { $0.kp_proc.p_pid }
+}
+
+/// Kills a process and its descendants (children first), for the case where
+/// the server did not shut down on its own and Chromium children remain.
+func killProcessTree(_ pid: pid_t) {
+    for child in childProcesses(of: pid) {
+        killProcessTree(child)
+    }
+    kill(pid, SIGKILL)
+}
+
 final class ServerProcess {
     enum State: Equatable {
         case stopped
@@ -153,8 +177,8 @@ final class ServerProcess {
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
         if child.isRunning {
-            log.write("server did not exit after SIGTERM; sending SIGKILL")
-            kill(child.processIdentifier, SIGKILL)
+            log.write("server did not exit after SIGTERM; killing its process tree")
+            killProcessTree(child.processIdentifier)
             child.waitUntilExit()
         }
     }

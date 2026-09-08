@@ -8,6 +8,10 @@ export {
   performHumanPacedNavigation,
 } from "./session.ts";
 export { isNativeBrowserIdentity } from "./identity.ts";
+export {
+  killTrackedBrowserProcesses,
+  trackedBrowserProcesses,
+} from "./registry.ts";
 export type {
   BrowserDescription,
   BrowserIdentity,

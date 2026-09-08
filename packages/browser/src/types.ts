@@ -20,6 +20,12 @@ export interface BrowserSession {
   readonly bodyText: () => Promise<string>;
   readonly identity: () => Promise<BrowserIdentity>;
   readonly finalUrl: () => string;
+  /**
+   * IP addresses the browser actually connected to for every response so
+   * far. Lets a caller verify the real peers after DNS, independent of the
+   * pre-navigation lookup.
+   */
+  readonly peerAddresses: () => Promise<readonly string[]>;
   readonly close: () => Promise<void>;
 }
 

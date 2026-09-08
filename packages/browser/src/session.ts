@@ -18,6 +18,11 @@ import type { BrowserIdentity } from "./types.ts";
 import type { BrowserSession } from "./types.ts";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { BrowserSessionOptions } from "./types.ts";
+import {
+  installBrowserExitHook,
+  killTrackedBrowserProcesses,
+  trackBrowserProcess,
+} from "./registry.ts";
 
 const activeSessions = new Set<BrowserSession>();
 
@@ -27,6 +32,8 @@ const activeSessions = new Set<BrowserSession>();
  */
 export async function closeAllBrowserSessions(): Promise<void> {
   await Promise.all([...activeSessions].map((session) => session.close()));
+  // Browsers that are still starting have no session yet.
+  killTrackedBrowserProcesses("SIGTERM");
 }
 
 export function browserExecutablePath(): string {
@@ -238,6 +245,9 @@ async function stopBrowser(
       once(process, "exit"),
       new Promise((resolve) => setTimeout(resolve, 2_000)),
     ]);
+    if (process.exitCode === null) {
+      process.kill("SIGKILL");
+    }
   }
   await rm(profileDirectory, { recursive: true, force: true });
 }
@@ -252,11 +262,13 @@ export async function createBrowserSession(
   const profileDirectory = await mkdtemp(
     join(tmpdir(), "elektro-brudi-browser-"),
   );
+  installBrowserExitHook();
   const browserProcess = spawn(
     executablePath,
     buildBrowserLaunchArguments({ debugPort, profileDirectory, userAgent }),
     { stdio: "ignore" },
   );
+  const untrack = trackBrowserProcess(browserProcess);
   let browser: Browser | undefined;
 
   try {
@@ -288,6 +300,21 @@ export async function createBrowserSession(
       });
     }
 
+    const peers = new Set<string>();
+    const pendingPeers: Promise<void>[] = [];
+    page.on("response", (response) => {
+      pendingPeers.push(
+        response
+          .serverAddr()
+          .then((address) => {
+            if (address) {
+              peers.add(address.ipAddress);
+            }
+          })
+          .catch(() => undefined),
+      );
+    });
+
     let closed = false;
     const session: BrowserSession = {
       navigate: async (url, timeoutMs) => {
@@ -313,6 +340,10 @@ export async function createBrowserSession(
       bodyText: () => page.locator("body").innerText(),
       identity: () => readIdentity(page, browser!.version()),
       finalUrl: () => page.url(),
+      peerAddresses: async () => {
+        await Promise.all(pendingPeers);
+        return [...peers];
+      },
       close: async () => {
         if (closed) {
           return;
@@ -320,12 +351,14 @@ export async function createBrowserSession(
         closed = true;
         activeSessions.delete(session);
         await stopBrowser(browser, browserProcess, profileDirectory);
+        untrack();
       },
     };
     activeSessions.add(session);
     return session;
   } catch (error) {
     await stopBrowser(browser, browserProcess, profileDirectory);
+    untrack();
     throw error;
   }
 }

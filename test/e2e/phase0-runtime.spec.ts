@@ -9,7 +9,14 @@ function chromeProcessesFor(marker: string): string[] {
   const output = execFileSync("/bin/ps", ["-axo", "pid=,command="], {
     encoding: "utf8",
   });
-  return output.split("\n").filter((line) => line.includes(marker));
+  // Match only browser processes, not shells whose command line quotes
+  // the marker (for example the test runner itself).
+  return output
+    .split("\n")
+    .filter(
+      (line) =>
+        line.includes(marker) && line.includes("Google Chrome for Testing"),
+    );
 }
 
 test.describe.configure({ mode: "serial" });
@@ -107,6 +114,26 @@ test("runtime chain: health, SQLite, bundled Chromium capture, restart persisten
   } finally {
     await second.stop();
   }
+});
+
+test("SIGTERM during a capture leaves no Chromium process behind", async () => {
+  const directories = await createRuntimeDirectories();
+  const server = await startServer(directories);
+  const capture = fetch(`${server.baseUrl}/api/captures`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: "https://example.com/" }),
+  }).catch(() => null);
+  // Chromium is starting or navigating at this point.
+  await new Promise((resolve) => setTimeout(resolve, 1_500));
+  expect(chromeProcessesFor("elektro-brudi-browser-").length).toBeGreaterThan(
+    0,
+  );
+
+  await server.stop();
+  await capture;
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  expect(chromeProcessesFor("elektro-brudi-browser-")).toEqual([]);
 });
 
 test("busy port is a clear error, not a different origin", async () => {

@@ -57,6 +57,18 @@ extraction prompts, notarization, Intel builds.
 - A capture accepts only public `https` URLs without user info, loopback,
   `.local`, or private or link-local IP literals. The proof target is
   `https://example.com/`.
+- Network boundary of a capture: the target hostname is resolved before the
+  browser starts and every address must be public; the browser is launched
+  with the validated address pinned in `--host-resolver-rules` and with
+  Chromium's Local Network Access checks enabled; every request the page
+  makes, including redirect hops and subresources, passes the same policy
+  through request interception; after navigation the server verifies the
+  peer addresses the browser actually connected to and discards a capture
+  that reached a non-public address.
+- Inbound boundary of the API: the only accepted `Host` is the loopback
+  origin, and a request with a foreign `Origin` or a cross-site
+  `Sec-Fetch-Site` is refused, so a DNS-rebinding page cannot act as a
+  same-origin client of the unauthenticated API.
 - A capture stores the rendered body text as a file in the snapshot directory
   and stores metadata in SQLite: requested URL, final URL, HTTP status, bytes,
   SHA-256, Chromium version, duration, outcome, and a redacted error. It never

@@ -4,6 +4,7 @@ import {
   assertPublicHttpsUrl,
   createRequestPolicy,
   isPrivatePeerAddress,
+  resolvePublicHttpsTarget,
 } from "../src/url-policy.js";
 
 describe("assertPublicHttpsUrl", () => {
@@ -77,6 +78,20 @@ describe("assertPublicHttpsTarget", () => {
     await expect(assertPublicHttpsTarget(input, fakeLookup)).rejects.toThrow(
       reason,
     );
+  });
+});
+
+describe("resolvePublicHttpsTarget", () => {
+  it("returns the public addresses for pinning", async () => {
+    const target = await resolvePublicHttpsTarget(
+      "https://public.example/",
+      fakeLookup,
+    );
+    expect(target.addresses).toEqual(["93.184.216.34"]);
+    expect(
+      (await resolvePublicHttpsTarget("https://93.184.216.34/", fakeLookup))
+        .addresses,
+    ).toEqual([]);
   });
 });
 

@@ -20,6 +20,35 @@ describe("buildBrowserLaunchArguments", () => {
   });
 });
 
+describe("buildBrowserLaunchArguments pinning", () => {
+  it("pins validated hosts and enables local network access checks", () => {
+    const arguments_ = buildBrowserLaunchArguments({
+      debugPort: 19_226,
+      profileDirectory: "/tmp/browser-profile",
+      userAgent: "Chrome/151.0.0.0",
+      hostResolverRules: ["MAP example.com 93.184.216.34"],
+      blockLocalNetworkAccess: true,
+    });
+
+    expect(arguments_).toContain(
+      "--host-resolver-rules=MAP example.com 93.184.216.34",
+    );
+    expect(arguments_).toContain("--enable-features=LocalNetworkAccessChecks");
+    expect(arguments_.at(-1)).toBe("about:blank");
+  });
+
+  it("rejects malformed resolver rules", () => {
+    expect(() =>
+      buildBrowserLaunchArguments({
+        debugPort: 19_226,
+        profileDirectory: "/tmp/browser-profile",
+        userAgent: "Chrome/151.0.0.0",
+        hostResolverRules: ["MAP * ~NOTFOUND, EXCLUDE localhost"],
+      }),
+    ).toThrow("Unsupported host resolver rule");
+  });
+});
+
 describe("buildBrowserUserAgent", () => {
   it("uses the bundled Chromium major without a headless token", () => {
     expect(buildBrowserUserAgent("153.0.8010.12")).toBe(

@@ -68,9 +68,17 @@ export function buildBrowserLaunchArguments(input: {
   readonly debugPort: number;
   readonly profileDirectory: string;
   readonly userAgent: string;
+  readonly hostResolverRules?: readonly string[];
+  readonly blockLocalNetworkAccess?: boolean;
 }): readonly string[] {
   if (!Number.isInteger(input.debugPort) || input.debugPort <= 0) {
     throw new Error("The browser requires a nonzero CDP port");
+  }
+  const rules = input.hostResolverRules ?? [];
+  for (const rule of rules) {
+    if (!/^MAP \S+ \S+$/u.test(rule)) {
+      throw new Error(`Unsupported host resolver rule: ${rule}`);
+    }
   }
   return [
     "--headless=new",
@@ -80,6 +88,10 @@ export function buildBrowserLaunchArguments(input: {
     "--no-first-run",
     "--no-default-browser-check",
     "--window-size=1440,1000",
+    ...(rules.length > 0 ? [`--host-resolver-rules=${rules.join(", ")}`] : []),
+    ...(input.blockLocalNetworkAccess
+      ? ["--enable-features=LocalNetworkAccessChecks"]
+      : []),
     "about:blank",
   ];
 }
@@ -265,7 +277,17 @@ export async function createBrowserSession(
   installBrowserExitHook();
   const browserProcess = spawn(
     executablePath,
-    buildBrowserLaunchArguments({ debugPort, profileDirectory, userAgent }),
+    buildBrowserLaunchArguments({
+      debugPort,
+      profileDirectory,
+      userAgent,
+      ...(options.hostResolverRules
+        ? { hostResolverRules: options.hostResolverRules }
+        : {}),
+      ...(options.blockLocalNetworkAccess
+        ? { blockLocalNetworkAccess: true }
+        : {}),
+    }),
     { stdio: "ignore" },
   );
   const untrack = trackBrowserProcess(browserProcess);

@@ -17,7 +17,11 @@ import type { Database } from "@elektro-brudi/storage";
 import { BrowserUnavailableError, captureUrl } from "./capture.ts";
 import { buildHealthReport } from "./health.ts";
 import type { RuntimeConfig } from "./paths.ts";
-import { assertPublicHttpsTarget, assertPublicHttpsUrl } from "./url-policy.ts";
+import {
+  assertPublicHttpsUrl,
+  resolvePublicHttpsTarget,
+} from "./url-policy.ts";
+import type { ResolvedTarget } from "./url-policy.ts";
 
 export const SERVER_VERSION = (
   JSON.parse(
@@ -28,10 +32,10 @@ export const SERVER_VERSION = (
 export interface ServerDependencies {
   readonly config: RuntimeConfig;
   readonly database: Database;
-  readonly createSession: () => Promise<BrowserSession>;
+  readonly createSession: (target: ResolvedTarget) => Promise<BrowserSession>;
   readonly describeBrowser: () => BrowserDescription;
   /** DNS-level target check; defaults to the real resolver. */
-  readonly resolveTarget?: (url: string) => Promise<URL>;
+  readonly resolveTarget?: (url: string) => Promise<ResolvedTarget>;
   readonly logger?: FastifyServerOptions["logger"];
   readonly now?: () => Date;
   readonly captureTimeoutMs?: number;
@@ -61,13 +65,46 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
   const records = runtimeRecordRepository(database.connection);
   const captures = captureRepository(database.connection);
   const modelRuns = modelRunRepository(database.connection);
-  const resolveTarget = dependencies.resolveTarget ?? assertPublicHttpsTarget;
+  const resolveTarget = dependencies.resolveTarget ?? resolvePublicHttpsTarget;
   const app = fastify({
     logger: dependencies.logger ?? false,
     bodyLimit: 16_384,
     // Shutdown must not wait for a capture request in flight; the browser
     // sessions are closed by the entry point before the server closes.
     forceCloseConnections: true,
+  });
+
+  // Inbound boundary: the API is unauthenticated, so the fixed loopback
+  // origin is the only acceptable Host, and a browser context from any
+  // other origin (DNS rebinding, cross-site fetch) is refused.
+  app.addHook("onRequest", (request, reply, done) => {
+    const bound = app.server.address();
+    const port =
+      typeof bound === "object" && bound !== null ? bound.port : config.port;
+    const expectedHost = `${config.host}:${port}`;
+    if (request.headers.host !== expectedHost) {
+      reply
+        .status(403)
+        .send(
+          apiError("HOST_REJECTED", `Requests must address ${expectedHost}`),
+        );
+      return;
+    }
+    const origin = request.headers.origin;
+    if (origin !== undefined && origin !== `http://${expectedHost}`) {
+      reply
+        .status(403)
+        .send(apiError("ORIGIN_REJECTED", "Cross-origin requests are refused"));
+      return;
+    }
+    const site = request.headers["sec-fetch-site"];
+    if (site !== undefined && site !== "same-origin" && site !== "none") {
+      reply
+        .status(403)
+        .send(apiError("ORIGIN_REJECTED", "Cross-site requests are refused"));
+      return;
+    }
+    done();
   });
 
   app.setErrorHandler((error: unknown, _request, reply) => {
@@ -123,9 +160,9 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
   app.get("/api/captures", () => ({ captures: captures.list() }));
   app.post("/api/captures", async (request, reply) => {
     const body = captureBodySchema.parse(request.body);
-    let url: URL;
+    let target: ResolvedTarget;
     try {
-      url = await resolveTarget(assertPublicHttpsUrl(body.url).href);
+      target = await resolveTarget(assertPublicHttpsUrl(body.url).href);
     } catch (error) {
       return reply
         .status(400)
@@ -137,7 +174,7 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
         );
     }
     const captureId = randomUUID();
-    const result = await captureUrl(captureId, url.href, {
+    const result = await captureUrl(captureId, target, {
       createSession: dependencies.createSession,
       describeBrowser: dependencies.describeBrowser,
       snapshotsDir: config.paths.snapshotsDir,

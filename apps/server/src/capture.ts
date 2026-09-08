@@ -6,11 +6,13 @@ import type { BrowserSession } from "@elektro-brudi/browser";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { CaptureInput } from "@elektro-brudi/storage";
 import { isPrivatePeerAddress } from "./url-policy.ts";
+// eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
+import type { ResolvedTarget } from "./url-policy.ts";
 
 export const CAPTURE_TIMEOUT_MS = 45_000;
 
 export interface CaptureDependencies {
-  readonly createSession: () => Promise<BrowserSession>;
+  readonly createSession: (target: ResolvedTarget) => Promise<BrowserSession>;
   readonly describeBrowser: () => BrowserDescription;
   readonly snapshotsDir: string;
   readonly now?: () => number;
@@ -27,9 +29,10 @@ function errorMessage(error: unknown): string {
 
 export async function captureUrl(
   captureId: string,
-  url: string,
+  target: ResolvedTarget,
   dependencies: CaptureDependencies,
 ): Promise<CaptureInput> {
+  const url = target.url.href;
   const now = dependencies.now ?? performance.now.bind(performance);
   const startedAt = now();
   let description: BrowserDescription;
@@ -41,7 +44,7 @@ export async function captureUrl(
 
   let session: BrowserSession | undefined;
   try {
-    session = await dependencies.createSession();
+    session = await dependencies.createSession(target);
     const navigation = await session.navigate(
       url,
       dependencies.timeoutMs ?? CAPTURE_TIMEOUT_MS,

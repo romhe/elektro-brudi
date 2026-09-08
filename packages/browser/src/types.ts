@@ -39,6 +39,19 @@ export interface BrowserSessionOptions {
    * aborted. Interception is only installed when the hook is present.
    */
   readonly allowRequest?: (url: string) => boolean | Promise<boolean>;
+  /**
+   * Chromium --host-resolver-rules entries, for example
+   * "MAP example.com 93.184.216.34". Pins a pre-validated hostname to the
+   * address that passed the policy, so Chromium's own DNS lookup cannot be
+   * rebound to another address.
+   */
+  readonly hostResolverRules?: readonly string[];
+  /**
+   * Enables Chromium's Local Network Access checks. Subresource requests
+   * from a public page to loopback, private, or link-local addresses are
+   * then blocked by the browser at connection time, independent of DNS.
+   */
+  readonly blockLocalNetworkAccess?: boolean;
 }
 
 export interface BrowserDescription {

@@ -5,7 +5,7 @@ import { openDatabase } from "@elektro-brudi/storage";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { Database } from "@elektro-brudi/storage";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, InjectOptions } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveRuntimeConfig } from "../src/paths.js";
 import { buildServer } from "../src/server.js";
@@ -52,6 +52,11 @@ function fakeSession(options: {
 let directory: string;
 let database: Database;
 let app: FastifyInstance;
+const inject = (options: InjectOptions) =>
+  app.inject({
+    ...options,
+    headers: { host: "127.0.0.1:0", ...(options.headers ?? {}) },
+  });
 let session: ReturnType<typeof fakeSession>;
 let describeBrowser: () => { executablePath: string; chromiumVersion: string };
 
@@ -91,7 +96,7 @@ beforeEach(async () => {
           "The hostname resolves to a private or loopback address",
         );
       }
-      return new URL(url);
+      return { url: new URL(url), addresses: ["93.184.216.34"] };
     },
     now: () => new Date("2026-09-07T12:00:00.000Z"),
   });
@@ -106,7 +111,7 @@ afterEach(async () => {
 
 describe("GET /api/health", () => {
   it("reports server, database, and browser state without secrets or paths to the binary", async () => {
-    const response = await app.inject({ method: "GET", url: "/api/health" });
+    const response = await inject({ method: "GET", url: "/api/health" });
 
     expect(response.statusCode).toBe(200);
     const body = response.json();
@@ -126,7 +131,7 @@ describe("GET /api/health", () => {
       throw new Error("The project browser binary is not installed");
     };
 
-    const response = await app.inject({ method: "GET", url: "/api/health" });
+    const response = await inject({ method: "GET", url: "/api/health" });
 
     expect(response.statusCode).toBe(200);
     expect(response.json().browser).toEqual({
@@ -136,9 +141,56 @@ describe("GET /api/health", () => {
   });
 });
 
+describe("inbound origin boundary", () => {
+  it("refuses a request whose Host is not the loopback origin", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/health",
+      headers: { host: "attacker.example:47831" },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json().code).toBe("HOST_REJECTED");
+  });
+
+  it("refuses a browser request from another origin", async () => {
+    const response = await inject({
+      method: "POST",
+      url: "/api/records",
+      headers: { origin: "http://attacker.example:47831" },
+      payload: { note: "rebinding" },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json().code).toBe("ORIGIN_REJECTED");
+    const listed = await inject({ method: "GET", url: "/api/records" });
+    expect(listed.json().records).toEqual([]);
+  });
+
+  it("refuses cross-site fetches by Sec-Fetch-Site", async () => {
+    const response = await inject({
+      method: "GET",
+      url: "/api/records",
+      headers: { "sec-fetch-site": "cross-site" },
+    });
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("accepts same-origin browser requests", async () => {
+    const response = await inject({
+      method: "POST",
+      url: "/api/records",
+      headers: {
+        origin: "http://127.0.0.1:0",
+        "sec-fetch-site": "same-origin",
+      },
+      payload: { note: "same origin" },
+    });
+    expect(response.statusCode).toBe(201);
+  });
+});
+
 describe("/api/records", () => {
   it("creates and lists records", async () => {
-    const created = await app.inject({
+    const created = await inject({
       method: "POST",
       url: "/api/records",
       payload: { note: "restart proof" },
@@ -146,12 +198,12 @@ describe("/api/records", () => {
     expect(created.statusCode).toBe(201);
     expect(created.json()).toMatchObject({ note: "restart proof" });
 
-    const listed = await app.inject({ method: "GET", url: "/api/records" });
+    const listed = await inject({ method: "GET", url: "/api/records" });
     expect(listed.json().records).toEqual([created.json()]);
   });
 
   it("rejects an empty note with a structured error", async () => {
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/api/records",
       payload: { note: "  " },
@@ -164,7 +216,7 @@ describe("/api/records", () => {
 
 describe("/api/captures", () => {
   it("captures a public page, stores metadata, writes the snapshot, and closes the browser", async () => {
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/api/captures",
       payload: { url: "https://example.com/" },
@@ -189,13 +241,13 @@ describe("/api/captures", () => {
     );
     expect(JSON.stringify(capture)).not.toContain("This domain is for use");
 
-    const listed = await app.inject({ method: "GET", url: "/api/captures" });
+    const listed = await inject({ method: "GET", url: "/api/captures" });
     expect(listed.json().captures).toEqual([capture]);
   });
 
   it("classifies 403 as BLOCKED and keeps the snapshot", async () => {
     session = fakeSession({ httpStatus: 403, bodyText: "Access denied" });
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/api/captures",
       payload: { url: "https://example.com/" },
@@ -209,7 +261,7 @@ describe("/api/captures", () => {
 
   it("stores a navigation failure as FETCH_FAILED and still closes the browser", async () => {
     session = fakeSession({ fail: new Error("Navigation timed out") });
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/api/captures",
       payload: { url: "https://example.com/" },
@@ -225,7 +277,7 @@ describe("/api/captures", () => {
 
   it("rejects private targets before any browser starts", async () => {
     const createSession = vi.fn();
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/api/captures",
       payload: { url: "https://127.0.0.1/" },
@@ -238,7 +290,7 @@ describe("/api/captures", () => {
 
   it("discards a capture whose browser reached a private peer", async () => {
     session = fakeSession({ peers: ["93.184.216.34", "10.0.0.8"] });
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/api/captures",
       payload: { url: "https://example.com/" },
@@ -255,7 +307,7 @@ describe("/api/captures", () => {
   });
 
   it("rejects a hostname that resolves to a private address", async () => {
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/api/captures",
       payload: { url: "https://internal.example/offer" },
@@ -272,7 +324,7 @@ describe("/api/captures", () => {
     describeBrowser = () => {
       throw new Error("The project browser binary is not installed");
     };
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/api/captures",
       payload: { url: "https://example.com/" },
@@ -288,7 +340,7 @@ describe("/api/captures", () => {
 
 describe("/api/model-runs", () => {
   it("stores a measurement and lists it", async () => {
-    const created = await app.inject({
+    const created = await inject({
       method: "POST",
       url: "/api/model-runs",
       payload: {
@@ -303,12 +355,12 @@ describe("/api/model-runs", () => {
       },
     });
     expect(created.statusCode).toBe(201);
-    const listed = await app.inject({ method: "GET", url: "/api/model-runs" });
+    const listed = await inject({ method: "GET", url: "/api/model-runs" });
     expect(listed.json().modelRuns).toEqual([created.json()]);
   });
 
   it("rejects an unknown model", async () => {
-    const response = await app.inject({
+    const response = await inject({
       method: "POST",
       url: "/api/model-runs",
       payload: {
@@ -328,27 +380,27 @@ describe("/api/model-runs", () => {
 
 describe("static PWA", () => {
   it("serves the built index and assets", async () => {
-    const index = await app.inject({ method: "GET", url: "/" });
+    const index = await inject({ method: "GET", url: "/" });
     expect(index.statusCode).toBe(200);
     expect(index.body).toContain("<title>PWA</title>");
-    const asset = await app.inject({ method: "GET", url: "/app.js" });
+    const asset = await inject({ method: "GET", url: "/app.js" });
     expect(asset.body).toBe("console.log('app')");
   });
 
   it("falls back to index for app routes but not for unknown API routes", async () => {
-    const route = await app.inject({ method: "GET", url: "/proof/run" });
+    const route = await inject({ method: "GET", url: "/proof/run" });
     expect(route.statusCode).toBe(200);
     expect(route.body).toContain("<title>PWA</title>");
 
-    const asset = await app.inject({
+    const asset = await inject({
       method: "GET",
       url: "/assets/index-old.js",
     });
     expect(asset.statusCode).toBe(404);
-    const file = await app.inject({ method: "GET", url: "/missing.png" });
+    const file = await inject({ method: "GET", url: "/missing.png" });
     expect(file.statusCode).toBe(404);
 
-    const api = await app.inject({ method: "GET", url: "/api/nothing" });
+    const api = await inject({ method: "GET", url: "/api/nothing" });
     expect(api.statusCode).toBe(404);
     expect(api.json()).toEqual({
       code: "NOT_FOUND",

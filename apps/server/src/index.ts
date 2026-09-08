@@ -14,8 +14,16 @@ const database = openDatabase(config.paths.databasePath);
 const app = buildServer({
   config,
   database,
-  createSession: () =>
-    createBrowserSession({ allowRequest: createRequestPolicy() }),
+  createSession: (target) =>
+    createBrowserSession({
+      allowRequest: createRequestPolicy(),
+      // Pin the validated navigation target to the address that passed the
+      // policy; Chromium then cannot be rebound to another address for it.
+      hostResolverRules: target.addresses[0]
+        ? [`MAP ${target.url.hostname} ${target.addresses[0]}`]
+        : [],
+      blockLocalNetworkAccess: true,
+    }),
   describeBrowser,
   logger: { level: "info", file: config.paths.logFile },
 });

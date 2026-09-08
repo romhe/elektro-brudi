@@ -83,19 +83,26 @@ export function isPrivatePeerAddress(address: string): boolean {
   return family === 0 || isPrivateAddress(address, family);
 }
 
+export interface ResolvedTarget {
+  readonly url: URL;
+  /** Public addresses the hostname resolved to; empty for IP literals. */
+  readonly addresses: readonly string[];
+}
+
 /**
  * Syntactic policy plus DNS resolution: every address the hostname resolves
  * to must be public. Rejects hostnames that point at loopback or private
- * networks, which the literal check alone cannot see.
+ * networks, which the literal check alone cannot see. The addresses are
+ * returned so the browser can be pinned to them.
  */
-export async function assertPublicHttpsTarget(
+export async function resolvePublicHttpsTarget(
   input: string,
   lookup: AddressLookup = defaultLookup,
-): Promise<URL> {
+): Promise<ResolvedTarget> {
   const url = assertPublicHttpsUrl(input);
   const hostname = url.hostname.replace(/^\[|\]$/gu, "");
   if (isIP(hostname) !== 0) {
-    return url;
+    return { url, addresses: [] };
   }
   let addresses: Awaited<ReturnType<AddressLookup>>;
   try {
@@ -111,7 +118,14 @@ export async function assertPublicHttpsTarget(
       throw new Error("The hostname resolves to a private or loopback address");
     }
   }
-  return url;
+  return { url, addresses: addresses.map(({ address }) => address) };
+}
+
+export async function assertPublicHttpsTarget(
+  input: string,
+  lookup: AddressLookup = defaultLookup,
+): Promise<URL> {
+  return (await resolvePublicHttpsTarget(input, lookup)).url;
 }
 
 /**

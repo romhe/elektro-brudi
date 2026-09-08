@@ -83,6 +83,14 @@ beforeEach(async () => {
     database,
     createSession: async () => session,
     describeBrowser: () => describeBrowser(),
+    resolveTarget: async (url) => {
+      if (new URL(url).hostname === "internal.example") {
+        throw new Error(
+          "The hostname resolves to a private or loopback address",
+        );
+      }
+      return new URL(url);
+    },
     now: () => new Date("2026-09-07T12:00:00.000Z"),
   });
   await app.ready();
@@ -223,6 +231,20 @@ describe("/api/captures", () => {
     expect(response.statusCode).toBe(400);
     expect(response.json().code).toBe("URL_REJECTED");
     expect(createSession).not.toHaveBeenCalled();
+    expect(session.navigate).not.toHaveBeenCalled();
+  });
+
+  it("rejects a hostname that resolves to a private address", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/captures",
+      payload: { url: "https://internal.example/offer" },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      code: "URL_REJECTED",
+      message: "The hostname resolves to a private or loopback address",
+    });
     expect(session.navigate).not.toHaveBeenCalled();
   });
 

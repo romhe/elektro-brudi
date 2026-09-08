@@ -42,6 +42,27 @@ export function App() {
     value: number;
   }>({ modelId: null, text: "", value: 0 });
   const loadedModel = useRef<LoadedModel | null>(null);
+  // One model operation at a time: manual buttons and the full proof share
+  // this lock, so two Workers can never be created for overlapping loads.
+  const modelLock = useRef(false);
+
+  const withModelLock = useCallback(
+    async (work: () => Promise<void>): Promise<boolean> => {
+      if (modelLock.current) {
+        return false;
+      }
+      modelLock.current = true;
+      setBusy(true);
+      try {
+        await work();
+        return true;
+      } finally {
+        modelLock.current = false;
+        setBusy(false);
+      }
+    },
+    [],
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -177,7 +198,7 @@ export function App() {
   const generateStep = (modelId: ModelId, stepId: StepId) =>
     runStep(stepId, async () => {
       const loaded = loadedModel.current;
-      if (!loaded || loaded.modelId !== modelId) {
+      if (!loaded || loaded.modelId !== modelId || loaded.disposed) {
         throw new Error(`${modelId} ist nicht geladen`);
       }
       const constrained =
@@ -223,12 +244,8 @@ export function App() {
     });
 
   const runAll = useCallback(async () => {
-    if (busy) {
-      return;
-    }
-    setBusy(true);
-    dispatch({ type: "reset" });
-    try {
+    await withModelLock(async () => {
+      dispatch({ type: "reset" });
       await checkHealth();
       await writeRecord();
       await capturePage();
@@ -241,11 +258,18 @@ export function App() {
         }
       }
       await releaseModel();
-    } finally {
-      setBusy(false);
-    }
+    });
     // The step callbacks close over stable state setters.
-  }, [busy, note]);
+  }, [note, withModelLock]);
+
+  const manualLoad = (modelId: ModelId, stepId: StepId) =>
+    withModelLock(async () => {
+      await loadStep(modelId, stepId);
+    });
+  const manualGenerate = (modelId: ModelId, stepId: StepId) =>
+    withModelLock(async () => {
+      await generateStep(modelId, stepId);
+    });
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("autorun") === "1") {
@@ -429,7 +453,9 @@ export function App() {
           <button
             className="secondary"
             disabled={busy}
-            onClick={() => void loadStep("Qwen3-1.7B-q4f16_1-MLC", "load-1.7b")}
+            onClick={() =>
+              void manualLoad("Qwen3-1.7B-q4f16_1-MLC", "load-1.7b")
+            }
           >
             Qwen3-1.7B laden
           </button>
@@ -437,7 +463,7 @@ export function App() {
             className="secondary"
             disabled={busy}
             onClick={() =>
-              void generateStep("Qwen3-1.7B-q4f16_1-MLC", "generate-1.7b")
+              void manualGenerate("Qwen3-1.7B-q4f16_1-MLC", "generate-1.7b")
             }
           >
             1.7B: JSON erzeugen
@@ -445,7 +471,7 @@ export function App() {
           <button
             className="secondary"
             disabled={busy}
-            onClick={() => void loadStep("Qwen3-4B-q4f16_1-MLC", "load-4b")}
+            onClick={() => void manualLoad("Qwen3-4B-q4f16_1-MLC", "load-4b")}
           >
             Qwen3-4B laden
           </button>
@@ -453,7 +479,7 @@ export function App() {
             className="secondary"
             disabled={busy}
             onClick={() =>
-              void generateStep("Qwen3-4B-q4f16_1-MLC", "generate-4b")
+              void manualGenerate("Qwen3-4B-q4f16_1-MLC", "generate-4b")
             }
           >
             4B: JSON erzeugen

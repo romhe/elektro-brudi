@@ -17,7 +17,7 @@ import type { Database } from "@elektro-brudi/storage";
 import { BrowserUnavailableError, captureUrl } from "./capture.ts";
 import { buildHealthReport } from "./health.ts";
 import type { RuntimeConfig } from "./paths.ts";
-import { assertPublicHttpsUrl } from "./url-policy.ts";
+import { assertPublicHttpsTarget, assertPublicHttpsUrl } from "./url-policy.ts";
 
 export const SERVER_VERSION = (
   JSON.parse(
@@ -30,6 +30,8 @@ export interface ServerDependencies {
   readonly database: Database;
   readonly createSession: () => Promise<BrowserSession>;
   readonly describeBrowser: () => BrowserDescription;
+  /** DNS-level target check; defaults to the real resolver. */
+  readonly resolveTarget?: (url: string) => Promise<URL>;
   readonly logger?: FastifyServerOptions["logger"];
   readonly now?: () => Date;
   readonly captureTimeoutMs?: number;
@@ -59,9 +61,13 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
   const records = runtimeRecordRepository(database.connection);
   const captures = captureRepository(database.connection);
   const modelRuns = modelRunRepository(database.connection);
+  const resolveTarget = dependencies.resolveTarget ?? assertPublicHttpsTarget;
   const app = fastify({
     logger: dependencies.logger ?? false,
     bodyLimit: 16_384,
+    // Shutdown must not wait for a capture request in flight; the browser
+    // sessions are closed by the entry point before the server closes.
+    forceCloseConnections: true,
   });
 
   app.setErrorHandler((error: unknown, _request, reply) => {
@@ -119,7 +125,7 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
     const body = captureBodySchema.parse(request.body);
     let url: URL;
     try {
-      url = assertPublicHttpsUrl(body.url);
+      url = await resolveTarget(assertPublicHttpsUrl(body.url).href);
     } catch (error) {
       return reply
         .status(400)

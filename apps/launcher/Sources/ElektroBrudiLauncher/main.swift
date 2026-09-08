@@ -146,11 +146,14 @@ final class ServerProcess {
         guard let child = process, child.isRunning else { return }
         log.write("stopping server pid \(child.processIdentifier)")
         child.terminate()
-        let deadline = Date().addingTimeInterval(5)
+        // The server closes its Chromium children first and exits within
+        // 10 s on its own; a capture in flight needs more than 5 s.
+        let deadline = Date().addingTimeInterval(20)
         while child.isRunning && Date() < deadline {
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
         if child.isRunning {
+            log.write("server did not exit after SIGTERM; sending SIGKILL")
             kill(child.processIdentifier, SIGKILL)
             child.waitUntilExit()
         }

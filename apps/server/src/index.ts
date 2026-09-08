@@ -1,7 +1,12 @@
-import { createBrowserSession, describeBrowser } from "@elektro-brudi/browser";
+import {
+  closeAllBrowserSessions,
+  createBrowserSession,
+  describeBrowser,
+} from "@elektro-brudi/browser";
 import { openDatabase } from "@elektro-brudi/storage";
 import { ensureRuntimeDirectories, resolveRuntimeConfig } from "./paths.ts";
 import { buildServer } from "./server.ts";
+import { createRequestPolicy } from "./url-policy.ts";
 
 const config = resolveRuntimeConfig();
 ensureRuntimeDirectories(config.paths);
@@ -9,7 +14,8 @@ const database = openDatabase(config.paths.databasePath);
 const app = buildServer({
   config,
   database,
-  createSession: () => createBrowserSession(),
+  createSession: () =>
+    createBrowserSession({ allowRequest: createRequestPolicy() }),
   describeBrowser,
   logger: { level: "info", file: config.paths.logFile },
 });
@@ -21,7 +27,15 @@ async function shutdown(signal: string): Promise<void> {
   }
   shuttingDown = true;
   app.log.info({ signal }, "server shutting down");
-  await app.close();
+  // Hard deadline: the launcher force-kills after 20 s; leave a margin.
+  const deadline = setTimeout(() => process.exit(0), 10_000);
+  deadline.unref();
+  try {
+    await closeAllBrowserSessions();
+    await app.close();
+  } catch (error) {
+    app.log.error({ err: error }, "shutdown step failed");
+  }
   database.close();
   process.exit(0);
 }

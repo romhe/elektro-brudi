@@ -2,6 +2,7 @@ export {
   browserExecutablePath,
   buildBrowserLaunchArguments,
   buildBrowserUserAgent,
+  closeAllBrowserSessions,
   createBrowserSession,
   describeBrowser,
   performHumanPacedNavigation,
@@ -12,4 +13,5 @@ export type {
   BrowserIdentity,
   BrowserSession,
   BrowserSessionFactory,
+  BrowserSessionOptions,
 } from "./types.ts";

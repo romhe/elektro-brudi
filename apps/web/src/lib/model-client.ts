@@ -52,6 +52,8 @@ export interface LoadedModel {
   readonly worker: Worker;
   readonly cacheHit: boolean;
   readonly durationMs: number;
+  /** True once the worker was terminated; the engine must not be used. */
+  disposed: boolean;
 }
 
 export async function loadModel(
@@ -77,6 +79,7 @@ export async function loadModel(
       worker,
       cacheHit,
       durationMs: Math.round(performance.now() - startedAt),
+      disposed: false,
     };
   } catch (error) {
     worker.terminate();
@@ -143,9 +146,25 @@ export async function generateProofJson(
     return text;
   };
 
+  if (loaded.disposed) {
+    throw new Error(`${loaded.modelId} ist nicht mehr geladen`);
+  }
   let raw: string;
   try {
     raw = await Promise.race([collect(), timeout]);
+  } catch (error) {
+    // A timeout only rejects this caller. Stop the worker so inference does
+    // not continue in the background and no later unload can hang on it.
+    if (!loaded.disposed) {
+      try {
+        void loaded.engine.interruptGenerate();
+      } catch {
+        // The worker may already be unresponsive; termination follows.
+      }
+      loaded.worker.terminate();
+      loaded.disposed = true;
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
@@ -156,10 +175,23 @@ export async function generateProofJson(
   };
 }
 
+export const UNLOAD_TIMEOUT_MS = 10_000;
+
 export async function unloadModel(loaded: LoadedModel): Promise<void> {
+  if (loaded.disposed) {
+    return;
+  }
+  loaded.disposed = true;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    await loaded.engine.unload();
+    await Promise.race([
+      loaded.engine.unload(),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, UNLOAD_TIMEOUT_MS);
+      }),
+    ]);
   } finally {
+    clearTimeout(timer);
     loaded.worker.terminate();
   }
 }

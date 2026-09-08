@@ -15,8 +15,19 @@ import type { Browser, Page } from "playwright";
 import type { BrowserDescription } from "./types.ts";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { BrowserIdentity } from "./types.ts";
-// eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { BrowserSession } from "./types.ts";
+// eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
+import type { BrowserSessionOptions } from "./types.ts";
+
+const activeSessions = new Set<BrowserSession>();
+
+/**
+ * Closes every browser this process started. The server calls it on SIGTERM
+ * so a capture in flight never leaves a Chromium child behind.
+ */
+export async function closeAllBrowserSessions(): Promise<void> {
+  await Promise.all([...activeSessions].map((session) => session.close()));
+}
 
 export function browserExecutablePath(): string {
   return chromium.executablePath();
@@ -232,8 +243,9 @@ async function stopBrowser(
 }
 
 export async function createBrowserSession(
-  executablePath = browserExecutablePath(),
+  options: BrowserSessionOptions = {},
 ): Promise<BrowserSession> {
+  const executablePath = options.executablePath ?? browserExecutablePath();
   const chromiumVersion = readChromiumVersion(executablePath);
   const userAgent = buildBrowserUserAgent(chromiumVersion);
   const debugPort = await reserveLocalPort();
@@ -259,22 +271,59 @@ export async function createBrowserSession(
       throw new Error("Chromium did not expose its default browser context");
     }
     const page = context.pages()[0] ?? (await context.newPage());
+    const blockedUrls: string[] = [];
+    const allowRequest = options.allowRequest;
+    if (allowRequest) {
+      await page.route("**/*", async (route) => {
+        const url = route.request().url();
+        const allowed = await Promise.resolve()
+          .then(() => allowRequest(url))
+          .catch(() => false);
+        if (allowed) {
+          await route.continue();
+        } else {
+          blockedUrls.push(url);
+          await route.abort("blockedbyclient");
+        }
+      });
+    }
 
-    return {
+    let closed = false;
+    const session: BrowserSession = {
       navigate: async (url, timeoutMs) => {
-        const response = await performHumanPacedNavigation(
-          page,
-          url,
-          timeoutMs,
-        );
-        return { httpStatus: response?.status() ?? null };
+        try {
+          const response = await performHumanPacedNavigation(
+            page,
+            url,
+            timeoutMs,
+          );
+          return { httpStatus: response?.status() ?? null };
+        } catch (error) {
+          const blocked = blockedUrls[0];
+          if (blocked !== undefined) {
+            throw new Error(
+              `Request to ${blocked} was blocked by the URL policy`,
+              { cause: error },
+            );
+          }
+          throw error;
+        }
       },
       title: () => page.title(),
       bodyText: () => page.locator("body").innerText(),
       identity: () => readIdentity(page, browser!.version()),
       finalUrl: () => page.url(),
-      close: () => stopBrowser(browser, browserProcess, profileDirectory),
+      close: async () => {
+        if (closed) {
+          return;
+        }
+        closed = true;
+        activeSessions.delete(session);
+        await stopBrowser(browser, browserProcess, profileDirectory);
+      },
     };
+    activeSessions.add(session);
+    return session;
   } catch (error) {
     await stopBrowser(browser, browserProcess, profileDirectory);
     throw error;

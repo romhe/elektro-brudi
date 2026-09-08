@@ -25,6 +25,16 @@ export interface BrowserSession {
 
 export type BrowserSessionFactory = () => Promise<BrowserSession>;
 
+export interface BrowserSessionOptions {
+  readonly executablePath?: string;
+  /**
+   * Decides for every request the page makes, including redirect targets and
+   * subresources, whether the browser may send it. A rejected request is
+   * aborted. Interception is only installed when the hook is present.
+   */
+  readonly allowRequest?: (url: string) => boolean | Promise<boolean>;
+}
+
 export interface BrowserDescription {
   readonly executablePath: string;
   readonly chromiumVersion: string;

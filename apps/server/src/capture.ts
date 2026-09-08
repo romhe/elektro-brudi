@@ -3,16 +3,20 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { BrowserDescription } from "@elektro-brudi/browser";
 import type { BrowserSession } from "@elektro-brudi/browser";
+import { RedirectBlockedError } from "@elektro-brudi/browser";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { CaptureInput } from "@elektro-brudi/storage";
 import { isPrivatePeerAddress } from "./url-policy.ts";
-// eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { ResolvedTarget } from "./url-policy.ts";
 
 export const CAPTURE_TIMEOUT_MS = 45_000;
+/** Cross-host document redirects followed per capture, each re-validated. */
+export const MAX_REDIRECT_HOPS = 3;
 
 export interface CaptureDependencies {
   readonly createSession: (target: ResolvedTarget) => Promise<BrowserSession>;
+  /** Validates and resolves a redirect location before it is followed. */
+  readonly resolveTarget: (url: string) => Promise<ResolvedTarget>;
   readonly describeBrowser: () => BrowserDescription;
   readonly snapshotsDir: string;
   readonly now?: () => number;
@@ -44,11 +48,36 @@ export async function captureUrl(
 
   let session: BrowserSession | undefined;
   try {
-    session = await dependencies.createSession(target);
-    const navigation = await session.navigate(
-      url,
-      dependencies.timeoutMs ?? CAPTURE_TIMEOUT_MS,
-    );
+    // A cross-host redirect ends the pinned session. The new host is put
+    // through the same policy and pinned into a fresh browser before the
+    // capture continues, so Chromium never resolves an unvalidated host.
+    let current = target;
+    let navigation: { readonly httpStatus: number | null } | undefined;
+    for (let hop = 0; navigation === undefined; hop += 1) {
+      session = await dependencies.createSession(current);
+      try {
+        navigation = await session.navigate(
+          current.url.href,
+          dependencies.timeoutMs ?? CAPTURE_TIMEOUT_MS,
+        );
+      } catch (error) {
+        if (!(error instanceof RedirectBlockedError)) {
+          throw error;
+        }
+        if (hop >= MAX_REDIRECT_HOPS) {
+          throw new Error(
+            `More than ${MAX_REDIRECT_HOPS} cross-host redirects; last location ${error.location}`,
+            { cause: error },
+          );
+        }
+        await session.close();
+        session = undefined;
+        current = await dependencies.resolveTarget(error.location);
+      }
+    }
+    if (session === undefined) {
+      throw new Error("The browser session ended before the page was read");
+    }
     const [title, bodyText, identity, peers] = await Promise.all([
       session.title(),
       session.bodyText(),

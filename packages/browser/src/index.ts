@@ -12,8 +12,10 @@ export {
   killTrackedBrowserProcesses,
   trackedBrowserProcesses,
 } from "./registry.ts";
+export { RedirectBlockedError } from "./types.ts";
 export type {
   BrowserDescription,
+  RequestInfo,
   BrowserIdentity,
   BrowserSession,
   BrowserSessionFactory,

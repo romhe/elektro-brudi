@@ -116,6 +116,29 @@ test("runtime chain: health, SQLite, bundled Chromium capture, restart persisten
   }
 });
 
+test("a cross-host redirect is re-validated, re-pinned, and followed", async () => {
+  const directories = await createRuntimeDirectories();
+  const server = await startServer(directories);
+  try {
+    const capture = await (
+      await fetch(`${server.baseUrl}/api/captures`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://youtu.be/" }),
+      })
+    ).json();
+    test.info().annotations.push({
+      type: "redirect",
+      description: `${capture.outcome} ${capture.httpStatus} -> ${capture.finalUrl}`,
+    });
+    expect(["FETCHED", "BLOCKED"]).toContain(capture.outcome);
+    expect(new URL(capture.finalUrl).hostname).toBe("www.youtube.com");
+    expect(chromeProcessesFor("elektro-brudi-browser-")).toEqual([]);
+  } finally {
+    await server.stop();
+  }
+});
+
 test("SIGTERM during a capture leaves no Chromium process behind", async () => {
   const directories = await createRuntimeDirectories();
   const server = await startServer(directories);

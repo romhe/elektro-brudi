@@ -31,6 +31,26 @@ export interface BrowserSession {
 
 export type BrowserSessionFactory = () => Promise<BrowserSession>;
 
+export interface RequestInfo {
+  /** True for a top-level document request, including every redirect hop. */
+  readonly isNavigation: boolean;
+}
+
+/**
+ * Thrown by navigate when a top-level document request was refused by the
+ * request policy, typically a cross-host redirect. The caller can validate
+ * the location and follow it with a freshly pinned session.
+ */
+export class RedirectBlockedError extends Error {
+  readonly location: string;
+
+  constructor(location: string, options?: ErrorOptions) {
+    super(`Navigation to ${location} was refused by the URL policy`, options);
+    this.name = "RedirectBlockedError";
+    this.location = location;
+  }
+}
+
 export interface BrowserSessionOptions {
   readonly executablePath?: string;
   /**
@@ -38,7 +58,10 @@ export interface BrowserSessionOptions {
    * subresources, whether the browser may send it. A rejected request is
    * aborted. Interception is only installed when the hook is present.
    */
-  readonly allowRequest?: (url: string) => boolean | Promise<boolean>;
+  readonly allowRequest?: (
+    url: string,
+    request: RequestInfo,
+  ) => boolean | Promise<boolean>;
   /**
    * Chromium --host-resolver-rules entries, for example
    * "MAP example.com 93.184.216.34". Pins a pre-validated hostname to the

@@ -176,6 +176,7 @@ export function buildServer(dependencies: ServerDependencies): FastifyInstance {
     const captureId = randomUUID();
     const result = await captureUrl(captureId, target, {
       createSession: dependencies.createSession,
+      resolveTarget,
       describeBrowser: dependencies.describeBrowser,
       snapshotsDir: config.paths.snapshotsDir,
       ...(dependencies.captureTimeoutMs === undefined

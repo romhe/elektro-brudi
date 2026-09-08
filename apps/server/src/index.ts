@@ -11,12 +11,20 @@ import { createRequestPolicy } from "./url-policy.ts";
 const config = resolveRuntimeConfig();
 ensureRuntimeDirectories(config.paths);
 const database = openDatabase(config.paths.databasePath);
+const requestPolicy = createRequestPolicy();
 const app = buildServer({
   config,
   database,
   createSession: (target) =>
     createBrowserSession({
-      allowRequest: createRequestPolicy(),
+      allowRequest: (url, { isNavigation }) => {
+        // Only the pinned host may serve the document; a cross-host redirect
+        // is refused here and followed by the capture with a new session.
+        if (isNavigation && new URL(url).hostname !== target.url.hostname) {
+          return false;
+        }
+        return requestPolicy(url);
+      },
       // Pin the validated navigation target to the address that passed the
       // policy; Chromium then cannot be rebound to another address for it.
       hostResolverRules: target.addresses[0]

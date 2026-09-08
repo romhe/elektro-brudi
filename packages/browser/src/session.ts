@@ -18,6 +18,7 @@ import type { BrowserIdentity } from "./types.ts";
 import type { BrowserSession } from "./types.ts";
 // eslint-disable-next-line no-unused-vars -- Babel ESLint does not track type-only usage.
 import type { BrowserSessionOptions } from "./types.ts";
+import { RedirectBlockedError } from "./types.ts";
 import {
   installBrowserExitHook,
   killTrackedBrowserProcesses,
@@ -306,19 +307,38 @@ export async function createBrowserSession(
     }
     const page = context.pages()[0] ?? (await context.newPage());
     const blockedUrls: string[] = [];
+    let blockedNavigation: string | undefined;
     const allowRequest = options.allowRequest;
     if (allowRequest) {
-      await page.route("**/*", async (route) => {
-        const url = route.request().url();
-        const allowed = await Promise.resolve()
-          .then(() => allowRequest(url))
-          .catch(() => false);
-        if (allowed) {
-          await route.continue();
-        } else {
-          blockedUrls.push(url);
-          await route.abort("blockedbyclient");
-        }
+      // Raw CDP Fetch interception pauses every request Chromium issues,
+      // including each redirect hop, which Playwright's page.route() does
+      // not see. Service workers are bypassed so no request can skip it.
+      const cdp = await context.newCDPSession(page);
+      await cdp.send("Network.setBypassServiceWorker", { bypass: true });
+      cdp.on("Fetch.requestPaused", (event) => {
+        const { requestId, request, resourceType } = event;
+        const isNavigation = resourceType === "Document";
+        void Promise.resolve()
+          .then(() => allowRequest(request.url, { isNavigation }))
+          .catch(() => false)
+          .then(async (allowed) => {
+            if (allowed) {
+              await cdp.send("Fetch.continueRequest", { requestId });
+              return;
+            }
+            blockedUrls.push(request.url);
+            if (isNavigation) {
+              blockedNavigation ??= request.url;
+            }
+            await cdp.send("Fetch.failRequest", {
+              requestId,
+              errorReason: "BlockedByClient",
+            });
+          })
+          .catch(() => undefined);
+      });
+      await cdp.send("Fetch.enable", {
+        patterns: [{ urlPattern: "*", requestStage: "Request" }],
       });
     }
 
@@ -348,6 +368,9 @@ export async function createBrowserSession(
           );
           return { httpStatus: response?.status() ?? null };
         } catch (error) {
+          if (blockedNavigation !== undefined) {
+            throw new RedirectBlockedError(blockedNavigation, { cause: error });
+          }
           const blocked = blockedUrls[0];
           if (blocked !== undefined) {
             throw new Error(

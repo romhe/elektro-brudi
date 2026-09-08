@@ -61,8 +61,11 @@ extraction prompts, notarization, Intel builds.
   browser starts and every address must be public; the browser is launched
   with the validated address pinned in `--host-resolver-rules` and with
   Chromium's Local Network Access checks enabled; every request the page
-  makes, including redirect hops and subresources, passes the same policy
-  through request interception; after navigation the server verifies the
+  makes, including each redirect hop and every subresource, passes the same
+  policy through CDP `Fetch` interception with service workers bypassed; a
+  cross-host document redirect ends the session, and the capture follows it
+  only after the new host passed the policy and was pinned into a fresh
+  browser (at most three hops); after navigation the server verifies the
   peer addresses the browser actually connected to and discards a capture
   that reached a non-public address.
 - Inbound boundary of the API: the only accepted `Host` is the loopback
